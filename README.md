@@ -258,7 +258,7 @@ Store and manage custom voices by name for reuse across requests:
 # Upload a voice to the library
 curl -X POST http://localhost:4123/v1/voices \
   -F "voice_file=@my_voice.wav" \
-  -F "name=my-custom-voice"
+  -F "voice-name=my-custom-voice"
 
 # Use the voice by name in speech generation
 curl -X POST http://localhost:4123/v1/audio/speech \
