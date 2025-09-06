@@ -1,3 +1,14 @@
+> [!NOTE]
+> Chatterbox has just been updated (for the first time since its release months ago)
+>
+> This was done suddenly and without any of the usual processes that we use in software engineering to make transitions like this not, well, disastrous...
+>
+> https://github.com/resemble-ai/chatterbox/issues/241
+> 
+> Currently working on updating this project to support the new version and its features as well as regaining original functionality in the meantime
+> 
+> _(September 6, 2025)_
+
 <p align="center">
   <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU5bjcd6giJaPhnlpTZysr24u6k9WGqwIjNgQo" alt="Chatterbox API TTS header">
 </p>
