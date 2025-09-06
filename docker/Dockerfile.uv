@@ -37,7 +37,7 @@ RUN uv pip install resemble-perth
 RUN . .venv/bin/activate && python -c "import perth; print('✓ resemble-perth installed successfully')"
 
 # Install chatterbox-tts after ensuring perth is available
-RUN uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git"
+RUN uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@v0.1.2"
 
 # Verify full installation
 RUN . .venv/bin/activate && python -c "import chatterbox; import perth; print('✓ All dependencies installed successfully')"

@@ -4,9 +4,9 @@
 > This was done suddenly and without any of the usual processes that we use in software engineering to make transitions like this not, well, disastrous...
 >
 > https://github.com/resemble-ai/chatterbox/issues/241
-> 
+>
 > Currently working on updating this project to support the new version and its features as well as regaining original functionality in the meantime
-> 
+>
 > _(September 6, 2025)_
 
 <p align="center">
@@ -55,8 +55,7 @@ uv sync
 uv run main.py
 ```
 
-> [!TIP]
-> [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+> [!TIP] > [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ### Local Installation with Python 🐍
 
@@ -803,7 +802,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 4123
 # With pip
 pip uninstall torch torchvision torchaudio
 pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-pip install chatterbox-tts
+pip install chatterbox-tts==0.1.2
 
 # With uv (handles this automatically)
 uv sync

@@ -45,7 +45,7 @@ RUN uv pip install setuptools fastapi uvicorn[standard] python-dotenv python-mul
 # RUN uv pip install resemble-perth
 
 # Install chatterbox-tts using uv
-RUN uv pip install chatterbox-tts
+RUN uv pip install chatterbox-tts==0.1.2
 
 # Copy application code
 COPY app/ ./app/

@@ -47,14 +47,14 @@ The combination of FastAPI and uv provides:
 RUN uv venv --python 3.11 && \
     uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124 && \
     uv pip install resemble-perth && \
-    uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git" && \
+    uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@v0.1.2" && \
     uv pip install fastapi uvicorn[standard] python-dotenv requests
 
 # CPU version (Dockerfile.uv)
 RUN uv venv --python 3.11 && \
     uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu && \
     uv pip install resemble-perth && \
-    uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git" && \
+    uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@v0.1.2" && \
     uv pip install fastapi uvicorn[standard] python-dotenv requests
 ```
 
@@ -135,7 +135,7 @@ pip install uv
 
 2. **Add dependencies**:
    ```bash
-   uv add "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git"
+   uv add "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git@v0.1.2"
    uv add "torch>=2.0.0,<2.7.0"
    uv add "torchaudio>=2.0.0,<2.7.0"
    uv add "fastapi>=0.104.0"

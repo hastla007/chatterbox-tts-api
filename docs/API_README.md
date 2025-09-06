@@ -23,7 +23,7 @@ This API provides a **FastAPI**-based web service for the Chatterbox TTS text-to
 1. Ensure you have the Chatterbox TTS package installed:
 
    ```bash
-   pip install chatterbox-tts
+   pip install chatterbox-tts==0.1.2
    ```
 
 2. Install FastAPI and other required dependencies:
