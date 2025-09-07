@@ -49,7 +49,6 @@ RUN uv pip install setuptools fastapi uvicorn[standard] python-dotenv python-mul
 RUN uv pip install chatterbox-tts==0.1.2
 
 # Added after the install of chatterboxx-tts to hopefully be able to use 
-# (doubtful — I think we'd need to update the pyproject.toml manually)
 RUN uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 
 # Copy application code

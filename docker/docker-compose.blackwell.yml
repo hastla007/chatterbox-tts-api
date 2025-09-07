@@ -5,8 +5,8 @@ services:
   chatterbox-tts:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.experimental
-    container_name: chatterbox-tts-api-experimental
+      dockerfile: docker/Dockerfile.blackwell
+    container_name: chatterbox-tts-api-blackwell
     ports:
       - '${PORT:-4123}:${PORT:-4123}'
     environment:

@@ -1,14 +1,3 @@
-> [!NOTE]
-> Chatterbox has just been updated (for the first time since its release months ago)
->
-> This was done suddenly and without any of the usual processes that we use in software engineering to make transitions like this not, well, disastrous...
->
-> https://github.com/resemble-ai/chatterbox/issues/241
->
-> Currently working on updating this project to support the new version and its features as well as regaining original functionality in the meantime
->
-> _(September 6, 2025)_
-
 <p align="center">
   <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU5bjcd6giJaPhnlpTZysr24u6k9WGqwIjNgQo" alt="Chatterbox API TTS header">
 </p>
@@ -55,7 +44,7 @@ uv sync
 uv run main.py
 ```
 
-> [!TIP]
+> [!TIP]  
 > [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ### Local Installation with Python 🐍
@@ -131,11 +120,13 @@ docker compose -f docker/docker-compose.uv.yml up -d          # uv-optimized (fa
 docker compose -f docker/docker-compose.gpu.yml up -d         # Standard + GPU
 docker compose -f docker/docker-compose.uv.gpu.yml up -d      # uv + GPU (recommended for GPU users)
 docker compose -f docker/docker-compose.cpu.yml up -d         # CPU-only
+docker compose -f docker/docker-compose.blackwell.yml up -d   # Blackwell (50XX) NVIDIA GPUs
 
 # API + Frontend (add --profile frontend to any of the above)
 docker compose -f docker/docker-compose.yml --profile frontend up -d             # Standard + Frontend
 docker compose -f docker/docker-compose.gpu.yml --profile frontend up -d         # GPU + Frontend
 docker compose -f docker/docker-compose.uv.gpu.yml --profile frontend up -d      # uv + GPU + Frontend
+docker compose -f docker/docker-compose.blackwell.yml --profile frontend up -d   # (Blackwell) uv + GPU + Frontend
 
 # Watch the logs as it initializes (the first use of TTS takes the longest)
 docker logs chatterbox-tts-api -f
