@@ -1,16 +1,19 @@
 # Use NVIDIA CUDA runtime as base for better GPU support
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.1-runtime-ubuntu22.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python and system dependencies
+# Install Python 3.11 and system dependencies
 RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
     python3.11 \
     python3.11-dev \
-    python3-pip \
+    python3.11-distutils \
     git \
     wget \
     curl \
@@ -23,16 +26,31 @@ RUN apt-get update && apt-get install -y \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
 # Set working directory
 WORKDIR /app
 
-# Install PyTorch with CUDA support
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+# Create virtual environment
+RUN uv venv --python 3.11
 
-# Copy requirements and install other dependencies
-COPY requirements.txt ./
-RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-multipart requests psutil chatterbox-tts==0.1.2
+# Install PyTorch with CUDA support using uv
+# RUN uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu128
+RUN uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+
+# Install base dependencies first
+RUN uv pip install setuptools fastapi uvicorn[standard] python-dotenv python-multipart requests psutil
+
+# Install resemble-perth specifically (required for watermarker)
+# RUN uv pip install resemble-perth
+
+# Install chatterbox-tts using uv
+RUN uv pip install chatterbox-tts==0.1.2
+
+# Added after the install of chatterboxx-tts to hopefully be able to use 
+# (doubtful — I think we'd need to update the pyproject.toml manually)
+RUN uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128
 
 # Copy application code
 COPY app/ ./app/
@@ -61,6 +79,9 @@ ENV HOST=0.0.0.0
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
+# Add uv venv to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
 # Expose port
 EXPOSE ${PORT}
 
@@ -68,5 +89,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5m --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the application with the new entry point
+# Run the application using the new entry point
 CMD ["python", "main.py"] 
