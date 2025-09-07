@@ -5,6 +5,18 @@ All notable changes to the Chatterbox TTS API project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2025-09-06
+
+### Fixed
+
+- **Dependency Pinning for `chatterbox-tts`**: Pinned the `chatterbox-tts` dependency to a specific version across all installation methods (`pip`, `uv pip`, `requirements.txt`, Dockerfiles). This ensures continued functionality and prevents breakage from recent upstream changes in the Resemble AI chatterbox library.
+
+### Added
+
+- **Experimental Blackwell GPU Support**: Introduced a new, experimental Docker configuration for users with NVIDIA Blackwell GPUs. While functionality is not guaranteed, it provides a template for running the service on this new architecture, both within Docker and as a guide for local setups.
+
+---
+
 ## [1.6.0] - 2025-07-02
 
 ### Added
