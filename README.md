@@ -55,7 +55,8 @@ uv sync
 uv run main.py
 ```
 
-> [!TIP] > [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+> [!TIP]
+> [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ### Local Installation with Python 🐍
 
