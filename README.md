@@ -60,6 +60,9 @@ cd chatterbox-tts-api
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
+# Use Python 3.11 (this command should install it if you don't already have 3.11)
+uv python pin 3.11
+
 # Install dependencies with uv (automatically creates venv)
 uv sync
 
@@ -885,7 +888,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 4123
 # With pip
 pip uninstall torch torchvision torchaudio
 pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-pip install chatterbox-tts==0.1.2
+pip install git+https://github.com/travisvn/chatterbox-multilingual.git@exp
 
 # With uv (handles this automatically)
 uv sync
@@ -1086,7 +1089,7 @@ git clone --branch stable https://github.com/travisvn/chatterbox-tts-api
 ## Support
 
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
-- 🐛 **Issues**: Report bugs and feature requests via GitHub issues
+- 🐛 **Issues**: Report bugs via GitHub issues or on [our Discord](http://chatterboxtts.com/discord)
 - 💬 **Discord**: [Join the Discord for this project](http://chatterboxtts.com/discord)
 
 ---
