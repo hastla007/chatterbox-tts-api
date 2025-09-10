@@ -60,9 +60,6 @@ cd chatterbox-tts-api
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Use Python 3.11 (this command should install it if you don't already have 3.11)
-uv python pin 3.11
-
 # Install dependencies with uv (automatically creates venv)
 uv sync
 
