@@ -7,14 +7,51 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status, File, UploadFile, Form
 from fastapi.responses import FileResponse, JSONResponse
 
-from app.models import ErrorResponse
+from app.models import ErrorResponse, SupportedLanguagesResponse, SupportedLanguageItem
 from app.core.voice_library import get_voice_library, SUPPORTED_VOICE_FORMATS
 from app.core.aliases import add_route_aliases
+from app.core.tts_model import is_multilingual, get_supported_languages
 from app.config import Config
 
 # Create router with aliasing support
 base_router = APIRouter()
 router = add_route_aliases(base_router)
+
+@router.get(
+    "/languages",
+    response_model=SupportedLanguagesResponse,
+    responses={
+        200: {"description": "List of supported languages"},
+        500: {"model": ErrorResponse}
+    },
+    summary="Get supported languages",
+    description="Get all languages supported by the multilingual TTS model"
+)
+async def get_supported_languages_endpoint():
+    """Get supported languages for multilingual TTS"""
+    try:
+        if not is_multilingual():
+            # If not using multilingual model, only English is supported
+            languages = [SupportedLanguageItem(code="en", name="English")]
+        else:
+            # Get supported languages from multilingual model
+            supported_langs = get_supported_languages()
+            languages = [
+                SupportedLanguageItem(code=code, name=name) 
+                for code, name in supported_langs.items()
+            ]
+        # Build full response including required fields
+        return SupportedLanguagesResponse(
+            languages=languages,
+            count=len(languages),
+            model_type="multilingual" if is_multilingual() else "standard",
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {"message": f"Failed to get supported languages: {str(e)}", "type": "language_error"}}
+        )
 
 @router.get(
     "/voices",
@@ -167,7 +204,8 @@ async def reset_default_voice():
 )
 async def upload_voice(
     voice_name: str = Form(..., description="Name for the voice (used in API calls)", min_length=1, max_length=100),
-    voice_file: UploadFile = File(..., description="Voice audio file")
+    voice_file: UploadFile = File(..., description="Voice audio file"),
+    language: str = Form("en", description="Language code for the voice (e.g., 'en', 'fr', 'es')", min_length=2, max_length=5)
 ):
     """Upload a new voice to the library"""
     
@@ -204,13 +242,38 @@ async def upload_voice(
             }
         )
     
+    # Validate language if multilingual model is available
+    if is_multilingual():
+        supported_langs = get_supported_languages()
+        if language not in supported_langs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "message": f"Unsupported language: {language}. Supported languages: {', '.join(supported_langs.keys())}",
+                        "type": "invalid_request_error"
+                    }
+                }
+            )
+    elif language != "en":
+        # If not using multilingual model, only English is supported
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "message": "Only English (en) is supported when not using multilingual model",
+                    "type": "invalid_request_error"
+                }
+            }
+        )
+    
     try:
         # Read file content
         file_content = await voice_file.read()
         
-        # Add voice to library
+        # Add voice to library with language
         voice_lib = get_voice_library()
-        metadata = voice_lib.add_voice(voice_name, file_content, voice_file.filename)
+        metadata = voice_lib.add_voice(voice_name, file_content, voice_file.filename, language)
         
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -220,7 +283,8 @@ async def upload_voice(
                     "name": metadata["name"],
                     "filename": metadata["filename"],
                     "file_size": metadata["file_size"],
-                    "upload_date": metadata["upload_date"]
+                    "upload_date": metadata["upload_date"],
+                    "language": metadata.get("language", "en")
                 }
             }
         )

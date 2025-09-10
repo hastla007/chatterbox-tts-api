@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TTSRequest, HealthResponse, VoiceLibraryResponse, DefaultVoiceResponse, VoiceLibraryItem, SSEEvent, StreamingProgress } from '../types';
+import type { TTSRequest, HealthResponse, VoiceLibraryResponse, DefaultVoiceResponse, VoiceLibraryItem, SSEEvent, StreamingProgress, SupportedLanguagesResponse } from '../types';
 
 export const createTTSService = (baseUrl: string, sessionId?: string) => ({
   generateSpeech: async (request: TTSRequest): Promise<Blob> => {
@@ -244,10 +244,21 @@ export const createTTSService = (baseUrl: string, sessionId?: string) => ({
     return response.json();
   },
 
-  uploadVoice: async (voiceName: string, voiceFile: File): Promise<any> => {
+  getSupportedLanguages: async (): Promise<SupportedLanguagesResponse> => {
+    const response = await fetch(`${baseUrl}/languages`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch supported languages: ${response.status}`);
+    }
+    return response.json();
+  },
+
+  uploadVoice: async (voiceName: string, voiceFile: File, language?: string): Promise<any> => {
     const formData = new FormData();
     formData.append('voice_name', voiceName);
     formData.append('voice_file', voiceFile);
+    if (language) {
+      formData.append('language', language);
+    }
 
     const response = await fetch(`${baseUrl}/voices`, {
       method: 'POST',

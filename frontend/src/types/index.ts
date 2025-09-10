@@ -122,6 +122,7 @@ export interface VoiceSample {
   audioUrl: string;
   uploadDate: Date;
   aliases?: string[];
+  language?: string;
 }
 
 export interface AudioRecord {
@@ -130,6 +131,8 @@ export interface AudioRecord {
   audioUrl: string;
   blob: Blob;
   createdAt: Date;
+  // duration?: number; // Duration in seconds
+  duration?: number | null | undefined;
   settings: {
     text: string;
     exaggeration: number;
@@ -149,6 +152,7 @@ export interface VoiceLibraryItem {
   upload_date: string;
   path: string;
   aliases?: string[];
+  language?: string;
 }
 
 export interface VoiceLibraryResponse {
@@ -161,6 +165,16 @@ export interface DefaultVoiceResponse {
   source: 'voice_library' | 'file_system';
   voice_info?: VoiceLibraryItem;
   path?: string;
+}
+
+export interface SupportedLanguageItem {
+  code: string;
+  name: string;
+}
+
+export interface SupportedLanguagesResponse {
+  languages: SupportedLanguageItem[];
+  count: number;
 }
 
 export interface AudioInfo {

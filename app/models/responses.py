@@ -135,4 +135,50 @@ class APIInfoResponse(BaseModel):
     memory_info: Optional[Dict[str, float]] = None
     recent_requests: Optional[List[Dict[str, Any]]] = None
     uptime_info: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None 
+    error: Optional[str] = None
+
+
+class VoiceLibraryItem(BaseModel):
+    """Voice library item response model"""
+    
+    name: str
+    filename: str
+    original_filename: str
+    file_extension: str
+    file_size: int
+    upload_date: str
+    path: str
+    language: str = "en"
+    aliases: List[str] = []
+    exists: bool = True
+
+
+class VoiceLibraryResponse(BaseModel):
+    """Voice library listing response"""
+    
+    voices: List[VoiceLibraryItem]
+    count: int
+
+
+class SupportedLanguageItem(BaseModel):
+    """Individual supported language information"""
+    
+    code: str
+    name: str
+
+
+class SupportedLanguagesResponse(BaseModel):
+    """Supported languages response"""
+    
+    languages: List[SupportedLanguageItem]
+    count: int
+    model_type: str
+
+
+class DefaultVoiceResponse(BaseModel):
+    """Default voice information response"""
+    
+    default_voice: Optional[str]
+    source: str
+    voice_info: Optional[VoiceLibraryItem] = None
+    path: Optional[str] = None

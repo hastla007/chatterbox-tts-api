@@ -37,7 +37,7 @@ class VoiceLibrary:
                     return json.load(f)
             except (json.JSONDecodeError, FileNotFoundError):
                 pass
-        return {"voices": {}, "version": "1.0"}
+        return {"voices": {}, "version": "2.0"}
     
     def _save_metadata(self):
         """Save voice metadata to JSON file"""
@@ -73,7 +73,7 @@ class VoiceLibrary:
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
     
-    def add_voice(self, voice_name: str, file_content: bytes, original_filename: str) -> Dict:
+    def add_voice(self, voice_name: str, file_content: bytes, original_filename: str, language: str = "en") -> Dict:
         """
         Add a voice to the library
         
@@ -81,6 +81,7 @@ class VoiceLibrary:
             voice_name: The name to store the voice as (will be used in API calls)
             file_content: The binary content of the voice file
             original_filename: The original filename (used to determine extension)
+            language: Language code for this voice (default: "en")
         
         Returns:
             Dict with voice metadata
@@ -94,6 +95,12 @@ class VoiceLibrary:
             raise ValueError("Voice name cannot be empty")
         
         voice_name = voice_name.strip()
+        
+        # Validate language code
+        if not language or not language.strip():
+            raise ValueError("Language code cannot be empty")
+        
+        language = language.strip().lower()
         
         # Check for invalid characters in voice name
         invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
@@ -132,6 +139,7 @@ class VoiceLibrary:
             "file_hash": file_hash,
             "upload_date": datetime.now().isoformat(),
             "path": str(voice_path),
+            "language": language,
             "aliases": []  # Initialize empty aliases list
         }
         
@@ -184,11 +192,12 @@ class VoiceLibrary:
         for voice_name, metadata in self._metadata["voices"].items():
             voice_path = Path(metadata["path"])
             if voice_path.exists():
-                # Ensure aliases field exists for backward compatibility
+                # Ensure aliases and language fields exist for backward compatibility
                 voice_data = {
                     **metadata,
                     "exists": True,
-                    "aliases": metadata.get("aliases", [])
+                    "aliases": metadata.get("aliases", []),
+                    "language": metadata.get("language", "en")  # Default to English for old voices
                 }
                 voices.append(voice_data)
             else:
@@ -549,6 +558,24 @@ class VoiceLibrary:
         
         # Then check if it's an alias
         return self._get_voice_by_alias(name_or_alias)
+    
+    def get_voice_language(self, voice_name: str) -> Optional[str]:
+        """
+        Get the language code for a voice by name or alias
+        
+        Args:
+            voice_name: The name or alias of the voice
+            
+        Returns:
+            Language code, or None if voice not found
+        """
+        # Resolve alias to actual name
+        actual_name = self.resolve_voice_name(voice_name)
+        if actual_name is None:
+            return None
+        
+        metadata = self._metadata["voices"][actual_name]
+        return metadata.get("language", "en")  # Default to English for backward compatibility
 
 
 # Global voice library instance

@@ -23,6 +23,7 @@
 
 🚀 **OpenAI-Compatible API** - Drop-in replacement for OpenAI's TTS API  
 ⚡ **FastAPI Performance** - High-performance async API with automatic documentation  
+🌍 **Multilingual Support** - Generate speech in 22 languages with language-aware voice cloning  
 🎨 **React Frontend** - Includes an optional, ready-to-use web interface  
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
 🎤 **Voice Library Management** - Upload, manage, and use custom voices by name  
@@ -258,9 +259,15 @@ Store and manage custom voices by name for reuse across requests:
 
 ```bash
 # Upload a voice to the library
-curl -X POST http://localhost:4123/v1/voices \
+curl -X POST http://localhost:4123/voices \
   -F "voice_file=@my_voice.wav" \
-  -F "voice-name=my-custom-voice"
+  -F "voice_name=my-custom-voice"
+
+# Upload a voice with language (multilingual support)
+curl -X POST http://localhost:4123/voices \
+  -F "voice_file=@french_voice.wav" \
+  -F "voice_name=french-speaker" \
+  -F "language=fr"
 
 # Use the voice by name in speech generation
 curl -X POST http://localhost:4123/v1/audio/speech \
@@ -268,11 +275,57 @@ curl -X POST http://localhost:4123/v1/audio/speech \
   -d '{"input": "Hello with my custom voice!", "voice": "my-custom-voice"}' \
   --output custom_voice_output.wav
 
-# List all available voices
-curl http://localhost:4123/v1/voices
+# Generate French speech (language auto-detected from voice)
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Bonjour, comment allez-vous?", "voice": "french-speaker"}' \
+  --output french_speech.wav
+
+# List all available voices (includes language metadata)
+curl http://localhost:4123/voices
+
+# Get supported languages
+curl http://localhost:4123/languages
 ```
 
 **🔧 [Complete Voice Library Documentation →](docs/VOICE_LIBRARY_MANAGEMENT.md)**
+
+## 🌍 Multilingual Support
+
+Generate speech in **22 languages** with language-aware voice cloning and automatic language detection.
+
+### Supported Languages
+
+Arabic (ar) • Danish (da) • German (de) • Greek (el) • **English (en)** • Spanish (es) • Finnish (fi) • French (fr) • Hebrew (he) • Hindi (hi) • Italian (it) • Japanese (ja) • Korean (ko) • Malay (ms) • Dutch (nl) • Norwegian (no) • Polish (pl) • Portuguese (pt) • Russian (ru) • Swedish (sv) • Swahili (sw) • Turkish (tr)
+
+### Quick Start
+
+```bash
+# Get supported languages
+curl http://localhost:4123/languages
+
+# Upload voice with language
+curl -X POST http://localhost:4123/voices \
+  -F "voice_name=spanish_speaker" \
+  -F "language=es" \
+  -F "voice_file=@spanish_voice.wav"
+
+# Generate multilingual speech
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "¡Hola! ¿Cómo estás hoy?", "voice": "spanish_speaker"}' \
+  --output spanish_speech.wav
+```
+
+### Key Features
+
+- 🎯 **Language Auto-Detection** - Voices store language metadata, automatically used in generation
+- 🌐 **No API Changes** - Maintains OpenAI compatibility, language determined from voice metadata
+- 🔄 **Configurable** - Enable/disable with `USE_MULTILINGUAL_MODEL` environment variable
+- 📚 **Voice Library Integration** - Language badges and filtering in web UI
+- 🧠 **Smart Fallback** - Defaults to English for backward compatibility
+
+**📚 [Complete Multilingual Documentation →](docs/MULTILINGUAL.md)**
 
 ## 🎵 Real-time Audio Streaming
 
@@ -339,6 +392,40 @@ response = requests.post(
 )
 
 with open("output.wav", "wb") as f:
+    f.write(response.content)
+```
+
+### Upload Voice with Language (Multilingual)
+
+```python
+import requests
+
+# Upload a multilingual voice
+with open("german_voice.wav", "rb") as voice_file:
+    response = requests.post(
+        "http://localhost:4123/voices",
+        data={
+            "voice_name": "german_speaker",
+            "language": "de"
+        },
+        files={
+            "voice_file": ("german_voice.wav", voice_file, "audio/wav")
+        }
+    )
+
+print(f"Upload status: {response.status_code}")
+
+# Generate German speech
+response = requests.post(
+    "http://localhost:4123/v1/audio/speech",
+    json={
+        "input": "Guten Tag! Wie geht es Ihnen?",
+        "voice": "german_speaker",
+        "exaggeration": 0.8
+    }
+)
+
+with open("german_output.wav", "wb") as f:
     f.write(response.content)
 ```
 
@@ -489,14 +576,15 @@ cp .env.example.docker .env
 
 Key environment variables (see the example files for full list):
 
-| Variable            | Default              | Description                    |
-| ------------------- | -------------------- | ------------------------------ |
-| `PORT`              | `4123`               | API server port                |
-| `EXAGGERATION`      | `0.5`                | Emotion intensity (0.25-2.0)   |
-| `CFG_WEIGHT`        | `0.5`                | Pace control (0.0-1.0)         |
-| `TEMPERATURE`       | `0.8`                | Sampling randomness (0.05-5.0) |
-| `VOICE_SAMPLE_PATH` | `./voice-sample.mp3` | Voice sample for cloning       |
-| `DEVICE`            | `auto`               | Device (auto/cuda/mps/cpu)     |
+| Variable                 | Default              | Description                    |
+| ------------------------ | -------------------- | ------------------------------ |
+| `PORT`                   | `4123`               | API server port                |
+| `USE_MULTILINGUAL_MODEL` | `true`               | Enable 23-language support     |
+| `EXAGGERATION`           | `0.5`                | Emotion intensity (0.25-2.0)   |
+| `CFG_WEIGHT`             | `0.5`                | Pace control (0.0-1.0)         |
+| `TEMPERATURE`            | `0.8`                | Sampling randomness (0.05-5.0) |
+| `VOICE_SAMPLE_PATH`      | `./voice-sample.mp3` | Voice sample for cloning       |
+| `DEVICE`                 | `auto`               | Device (auto/cuda/mps/cpu)     |
 
 <details>
 <summary><strong>🎭 Voice Cloning</strong></summary>
@@ -560,6 +648,9 @@ docker compose -f docker/docker-compose.gpu.yml up -d
 | `/audio/speech/upload`        | POST   | Generate speech with voice upload                                   |
 | `/audio/speech/stream`        | POST   | **Stream** speech generation ([docs](docs/STREAMING_API.md))        |
 | `/audio/speech/stream/upload` | POST   | **Stream** speech with voice upload ([docs](docs/STREAMING_API.md)) |
+| `/voices`                     | GET    | List voices in library (with language metadata)                     |
+| `/voices`                     | POST   | Upload voice to library (with language support)                     |
+| `/languages`                  | GET    | **Get supported languages** ([docs](docs/MULTILINGUAL.md))          |
 | `/health`                     | GET    | Health check and status                                             |
 | `/config`                     | GET    | Current configuration                                               |
 | `/v1/models`                  | GET    | Available models (OpenAI compat)                                    |
@@ -983,6 +1074,14 @@ curl http://localhost:4123/openapi.json
 6. Submit a pull request
 
 </details>
+
+## Issues with Multilingual?
+
+Fallback to the LKG (last known good) for the pre-multilingual release
+
+```bash
+git clone --branch stable https://github.com/travisvn/chatterbox-tts-api
+```
 
 ## Support
 

@@ -16,7 +16,12 @@ from .responses import (
     TTSProgressResponse,
     TTSStatusResponse,
     TTSStatisticsResponse,
-    APIInfoResponse
+    APIInfoResponse,
+    VoiceLibraryItem,
+    VoiceLibraryResponse,
+    SupportedLanguageItem,
+    SupportedLanguagesResponse,
+    DefaultVoiceResponse
 )
 
 __all__ = [
@@ -33,5 +38,10 @@ __all__ = [
     "TTSProgressResponse",
     "TTSStatusResponse",
     "TTSStatisticsResponse",
-    "APIInfoResponse"
+    "APIInfoResponse",
+    "VoiceLibraryItem",
+    "VoiceLibraryResponse",
+    "SupportedLanguageItem",
+    "SupportedLanguagesResponse",
+    "DefaultVoiceResponse"
 ] 

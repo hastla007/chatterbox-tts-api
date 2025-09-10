@@ -34,6 +34,9 @@ class Config:
     # Voice library settings
     VOICE_LIBRARY_DIR = os.getenv('VOICE_LIBRARY_DIR', './voices')
     
+    # Multilingual model settings
+    USE_MULTILINGUAL_MODEL = os.getenv('USE_MULTILINGUAL_MODEL', 'true').lower() == 'true'
+    
     # Memory management settings
     MEMORY_CLEANUP_INTERVAL = int(os.getenv('MEMORY_CLEANUP_INTERVAL', 5))
     CUDA_CACHE_CLEAR_INTERVAL = int(os.getenv('CUDA_CACHE_CLEAR_INTERVAL', 3))

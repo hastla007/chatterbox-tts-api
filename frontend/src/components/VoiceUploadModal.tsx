@@ -1,13 +1,15 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, X, Check, Loader2 } from 'lucide-react';
+import { Upload, X, Check, Loader2, Globe } from 'lucide-react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalFooter } from './modal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { LANGUAGE_OPTIONS, DEFAULT_LANGUAGE, getLanguageDisplayName } from '../constants/languages';
 
 interface VoiceUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpload: (file: File, customName?: string) => Promise<void>;
+  onUpload: (file: File, customName?: string, language?: string) => Promise<void>;
 }
 
 type UploadState = 'idle' | 'uploading' | 'success' | 'error';
@@ -15,6 +17,7 @@ type UploadState = 'idle' | 'uploading' | 'success' | 'error';
 export default function VoiceUploadModal({ open, onOpenChange, onUpload }: VoiceUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [customName, setCustomName] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_LANGUAGE);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [isDragOver, setIsDragOver] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -25,6 +28,7 @@ export default function VoiceUploadModal({ open, onOpenChange, onUpload }: Voice
 
     setSelectedFile(null);
     setCustomName('');
+    setSelectedLanguage(DEFAULT_LANGUAGE);
     setUploadState('idle');
     setIsDragOver(false);
     setErrorMessage('');
@@ -91,7 +95,7 @@ export default function VoiceUploadModal({ open, onOpenChange, onUpload }: Voice
     setErrorMessage('');
 
     try {
-      await onUpload(selectedFile, customName.trim() || undefined);
+      await onUpload(selectedFile, customName.trim() || undefined, selectedLanguage);
       setUploadState('success');
 
       // Auto-close after success
@@ -116,7 +120,7 @@ export default function VoiceUploadModal({ open, onOpenChange, onUpload }: Voice
 
       setErrorMessage(errorMsg);
     }
-  }, [selectedFile, customName, onUpload, handleClose]);
+  }, [selectedFile, customName, selectedLanguage, onUpload, handleClose]);
 
   const handleClickUpload = useCallback(() => {
     fileInputRef.current?.click();
@@ -219,20 +223,45 @@ export default function VoiceUploadModal({ open, onOpenChange, onUpload }: Voice
 
             {/* Name Input */}
             {selectedFile && uploadState === 'idle' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  Voice Name
-                </label>
-                <Input
-                  type="text"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="Enter a name for this voice..."
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  This name will appear in your voice library
-                </p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Voice Name
+                  </label>
+                  <Input
+                    type="text"
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="Enter a name for this voice..."
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This name will appear in your voice library
+                  </p>
+                </div>
+
+                {/* Language Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Language
+                  </label>
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Select the language this voice will be used for
+                  </p>
+                </div>
               </div>
             )}
           </div>

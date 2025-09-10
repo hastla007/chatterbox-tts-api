@@ -22,7 +22,7 @@ from app.core import (
     split_text_into_chunks, concatenate_audio_chunks, add_route_aliases,
     TTSStatus, start_tts_request, update_tts_status, get_voice_library
 )
-from app.core.tts_model import get_model
+from app.core.tts_model import get_model, is_multilingual
 from app.core.text_processing import split_text_for_streaming, get_streaming_settings
 
 # Create router with aliasing support
@@ -59,9 +59,42 @@ def create_wav_header(sample_rate: int, channels: int, bits_per_sample: int, dat
     return header.getvalue()
 
 
+def resolve_voice_path_and_language(voice_name: Optional[str]) -> tuple[str, str]:
+    """
+    Resolve a voice name or alias to a file path and language.
+    
+    Args:
+        voice_name: Voice name or alias from the request (can be None for default)
+        
+    Returns:
+        Tuple of (path to the voice file, language code)
+    """
+    # If no voice specified, use default
+    if not voice_name:
+        return Config.VOICE_SAMPLE_PATH, "en"
+    
+    # Try to resolve from voice library (handles both names and aliases)
+    voice_lib = get_voice_library()
+    voice_path = voice_lib.get_voice_path(voice_name)
+    voice_language = voice_lib.get_voice_language(voice_name)
+    
+    if voice_path is None:
+        # Check if it's an OpenAI voice name without an alias mapping
+        openai_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
+        if voice_name.lower() in openai_voices:
+            print(f"🎵 Using default voice for OpenAI voice '{voice_name}' (no alias mapping)")
+            return Config.VOICE_SAMPLE_PATH, "en"
+        
+        # Voice not found, fall back to default voice and log a warning
+        print(f"⚠️ Warning: Voice '{voice_name}' not found in voice library, using default voice")
+        return Config.VOICE_SAMPLE_PATH, "en"
+    
+    return voice_path, voice_language or "en"
+
+
 def resolve_voice_path(voice_name: Optional[str]) -> str:
     """
-    Resolve a voice name or alias to a file path.
+    Resolve a voice name or alias to a file path (backward compatibility).
     
     Args:
         voice_name: Voice name or alias from the request (can be None for default)
@@ -69,26 +102,8 @@ def resolve_voice_path(voice_name: Optional[str]) -> str:
     Returns:
         Path to the voice file (falls back to default if voice not found)
     """
-    # If no voice specified, use default
-    if not voice_name:
-        return Config.VOICE_SAMPLE_PATH
-    
-    # Try to resolve from voice library (handles both names and aliases)
-    voice_lib = get_voice_library()
-    voice_path = voice_lib.get_voice_path(voice_name)
-    
-    if voice_path is None:
-        # Check if it's an OpenAI voice name without an alias mapping
-        openai_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
-        if voice_name.lower() in openai_voices:
-            print(f"🎵 Using default voice for OpenAI voice '{voice_name}' (no alias mapping)")
-            return Config.VOICE_SAMPLE_PATH
-        
-        # Voice not found, fall back to default voice and log a warning
-        print(f"⚠️ Warning: Voice '{voice_name}' not found in voice library, using default voice")
-        return Config.VOICE_SAMPLE_PATH
-    
-    return voice_path
+    path, _ = resolve_voice_path_and_language(voice_name)
+    return path
 
 
 def validate_audio_file(file: UploadFile) -> None:
@@ -129,6 +144,7 @@ def validate_audio_file(file: UploadFile) -> None:
 async def generate_speech_internal(
     text: str,
     voice_sample_path: str,
+    language_id: str = "en",
     exaggeration: Optional[float] = None,
     cfg_weight: Optional[float] = None,
     temperature: Optional[float] = None
@@ -225,15 +241,22 @@ async def generate_speech_internal(
             # Use torch.no_grad() to prevent gradient accumulation
             with torch.no_grad():
                 # Run TTS generation in executor to avoid blocking
+                # Prepare generation kwargs
+                generate_kwargs = {
+                    "text": chunk,
+                    "audio_prompt_path": voice_sample_path,
+                    "exaggeration": exaggeration,
+                    "cfg_weight": cfg_weight,
+                    "temperature": temperature
+                }
+                
+                # Add language_id for multilingual models
+                if is_multilingual():
+                    generate_kwargs["language_id"] = language_id
+                
                 audio_tensor = await loop.run_in_executor(
                     None,
-                    lambda: model.generate(
-                        text=chunk,
-                        audio_prompt_path=voice_sample_path,
-                        exaggeration=exaggeration,
-                        cfg_weight=cfg_weight,
-                        temperature=temperature
-                    )
+                    lambda: model.generate(**generate_kwargs)
                 )
                 
                 # Ensure tensor is on the correct device and detached
@@ -337,6 +360,7 @@ async def generate_speech_internal(
 async def generate_speech_streaming(
     text: str,
     voice_sample_path: str,
+    language_id: str = "en",
     exaggeration: Optional[float] = None,
     cfg_weight: Optional[float] = None,
     temperature: Optional[float] = None,
@@ -467,7 +491,8 @@ async def generate_speech_streaming(
                         audio_prompt_path=voice_sample_path,
                         exaggeration=exaggeration,
                         cfg_weight=cfg_weight,
-                        temperature=temperature
+                        temperature=temperature,
+                        **({'language_id': language_id} if is_multilingual() else {})
                     )
                 )
                 
@@ -533,6 +558,7 @@ async def generate_speech_streaming(
 async def generate_speech_sse(
     text: str,
     voice_sample_path: str,
+    language_id: str = "en",
     exaggeration: Optional[float] = None,
     cfg_weight: Optional[float] = None,
     temperature: Optional[float] = None,
@@ -668,7 +694,8 @@ async def generate_speech_sse(
                         audio_prompt_path=voice_sample_path,
                         exaggeration=exaggeration,
                         cfg_weight=cfg_weight,
-                        temperature=temperature
+                        temperature=temperature,
+                        **({'language_id': language_id} if is_multilingual() else {})
                     )
                 )
                 
@@ -767,8 +794,8 @@ async def generate_speech_sse(
 async def text_to_speech(request: TTSRequest):
     """Generate speech from text using Chatterbox TTS with voice selection support"""
     
-    # Resolve voice name to file path
-    voice_sample_path = resolve_voice_path(request.voice)
+    # Resolve voice name to file path and language
+    voice_sample_path, language_id = resolve_voice_path_and_language(request.voice)
     
     # Check if SSE streaming is requested
     if request.stream_format == "sse":
@@ -777,6 +804,7 @@ async def text_to_speech(request: TTSRequest):
             generate_speech_sse(
                 text=request.input,
                 voice_sample_path=voice_sample_path,
+                language_id=language_id,
                 exaggeration=request.exaggeration,
                 cfg_weight=request.cfg_weight,
                 temperature=request.temperature,
@@ -796,6 +824,7 @@ async def text_to_speech(request: TTSRequest):
         buffer = await generate_speech_internal(
             text=request.input,
             voice_sample_path=voice_sample_path,
+            language_id=language_id,
             exaggeration=request.exaggeration,
             cfg_weight=request.cfg_weight,
             temperature=request.temperature
@@ -871,10 +900,11 @@ async def text_to_speech_with_upload(
     # Handle voice selection and file upload
     temp_voice_path = None
     voice_sample_path = Config.VOICE_SAMPLE_PATH  # Default
+    language_id = "en"  # Default language
     
     # First, try to resolve voice name from library if no file uploaded
     if not voice_file:
-        voice_sample_path = resolve_voice_path(voice)
+        voice_sample_path, language_id = resolve_voice_path_and_language(voice)
     
     # If a file is uploaded, it takes priority over voice name
     if voice_file:
@@ -922,6 +952,7 @@ async def text_to_speech_with_upload(
                     async for sse_event in generate_speech_sse(
                         text=input,
                         voice_sample_path=voice_sample_path,
+                        language_id=language_id,
                         exaggeration=exaggeration,
                         cfg_weight=cfg_weight,
                         temperature=temperature,
@@ -954,6 +985,7 @@ async def text_to_speech_with_upload(
             buffer = await generate_speech_internal(
                 text=input,
                 voice_sample_path=voice_sample_path,
+                language_id=language_id,
                 exaggeration=exaggeration,
                 cfg_weight=cfg_weight,
                 temperature=temperature
@@ -993,14 +1025,15 @@ async def text_to_speech_with_upload(
 async def stream_text_to_speech(request: TTSRequest):
     """Stream speech generation from text using Chatterbox TTS with voice selection support"""
     
-    # Resolve voice name to file path
-    voice_sample_path = resolve_voice_path(request.voice)
+    # Resolve voice name to file path and language
+    voice_sample_path, language_id = resolve_voice_path_and_language(request.voice)
     
     # Create streaming response
     return StreamingResponse(
         generate_speech_streaming(
             text=request.input,
             voice_sample_path=voice_sample_path,
+            language_id=language_id,
             exaggeration=request.exaggeration,
             cfg_weight=request.cfg_weight,
             temperature=request.temperature,
@@ -1069,10 +1102,11 @@ async def stream_text_to_speech_with_upload(
     # Handle voice selection and file upload
     temp_voice_path = None
     voice_sample_path = Config.VOICE_SAMPLE_PATH  # Default
+    language_id = "en"  # Default language
     
     # First, try to resolve voice name from library if no file uploaded
     if not voice_file:
-        voice_sample_path = resolve_voice_path(voice)
+        voice_sample_path, language_id = resolve_voice_path_and_language(voice)
     
     # If a file is uploaded, it takes priority over voice name
     if voice_file:
@@ -1117,6 +1151,7 @@ async def stream_text_to_speech_with_upload(
             async for chunk in generate_speech_streaming(
                 text=input,
                 voice_sample_path=voice_sample_path,
+                language_id=language_id,
                 exaggeration=exaggeration,
                 cfg_weight=cfg_weight,
                 temperature=temperature,

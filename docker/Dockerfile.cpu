@@ -24,7 +24,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy requirements (excluding torch/torchaudio since we installed them above)
 COPY requirements.txt ./
-RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-multipart requests psutil chatterbox-tts==0.1.2
+RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-multipart requests psutil
+
+# Install chatterbox-tts — with the breaking fix (pkuseg package exclusion) 
+RUN uv pip install git+https://github.com/travisvn/chatterbox-multilingual.git@exp
 
 # Copy application code
 COPY app/ ./app/

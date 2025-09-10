@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, Play, Pause, Upload, Edit2, Check, X, RefreshCw, Crown, Star, StarOff, Tag, Plus } from 'lucide-react';
+import { Trash2, Play, Pause, Upload, Edit2, Check, X, RefreshCw, Crown, Star, StarOff, Tag, Plus, Globe } from 'lucide-react';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import VoiceUploadModal from './VoiceUploadModal';
 import type { VoiceSample } from '../types';
+import { getLanguageByCode, getLanguageName, DEFAULT_LANGUAGE, getLanguageFlag } from '../constants/languages';
 
 interface VoiceLibraryProps {
   voices: VoiceSample[];
   selectedVoice: VoiceSample | null;
   onVoiceSelect: (voice: VoiceSample | null) => void;
-  onAddVoice: (file: File, customName?: string) => Promise<VoiceSample>;
+  onAddVoice: (file: File, customName?: string, language?: string) => Promise<VoiceSample>;
   onDeleteVoice: (voiceId: string) => Promise<void>;
   onRenameVoice: (voiceId: string, newName: string) => Promise<void>;
   onRefresh?: () => Promise<void>;
@@ -56,9 +57,9 @@ export default function VoiceLibrary({
     };
   }, []);
 
-  const handleUploadVoice = async (file: File, customName?: string) => {
+  const handleUploadVoice = async (file: File, customName?: string, language?: string) => {
     try {
-      await onAddVoice(file, customName);
+      await onAddVoice(file, customName, language);
     } catch (error) {
       throw error; // Re-throw to let the modal handle the error display
     }
@@ -316,9 +317,23 @@ export default function VoiceLibrary({
                               </div>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {voice.uploadDate.toLocaleDateString()} • {(voice.file.size / 1024 / 1024).toFixed(1)}MB
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{voice.uploadDate.toLocaleDateString()} • {(voice.file.size / 1024 / 1024).toFixed(1)}MB</span>
+                            {voice.language && (
+                              <div className="flex items-center gap-1 px-2 py-1 bg-accent/50 text-accent-foreground rounded-full">
+                                {(getLanguageFlag(voice.language) && getLanguageFlag(voice.language) !== '') ? (
+                                  <span className="text-xs font-medium">
+                                    {getLanguageFlag(voice.language)}
+                                  </span>
+                                ) : (
+                                  <Globe className="w-3 h-3" />
+                                )}
+                                <span className="text-xs font-medium">
+                                  {getLanguageName(voice.language)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
 
                           {/* Aliases display */}
                           {voice.aliases && voice.aliases.length > 0 && (

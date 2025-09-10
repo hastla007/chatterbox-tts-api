@@ -3,6 +3,7 @@ import { Play, Pause, Download, Trash2, Edit2, Check, X, History, Clock, Setting
 import { Input } from './ui/input';
 import type { AudioRecord } from '../types';
 import { Card, CardAction, CardContent } from './ui/card';
+import { formatDuration } from '../lib/utils';
 
 interface AudioHistoryProps {
   audioHistory: AudioRecord[];
@@ -147,9 +148,14 @@ export default function AudioHistory({
     onRestoreText(record.settings.text);
   };
 
-  const formatDuration = (text: string) => {
-    // Rough estimate: ~150 words per minute speaking rate
-    const wordCount = text.split(' ').length;
+  const getDurationDisplay = (record: AudioRecord) => {
+    // Use actual duration if available
+    if (record.duration && record.duration > 0) {
+      return formatDuration(record.duration);
+    }
+    
+    // Fallback to word-based estimation for records without duration
+    const wordCount = record.settings.text.split(' ').length;
     const estimatedSeconds = (wordCount / 150) * 60;
     if (estimatedSeconds < 60) {
       return `~${Math.ceil(estimatedSeconds)}s`;
@@ -285,7 +291,7 @@ export default function AudioHistory({
                     <span>•</span>
                     <span>{record.createdAt.toLocaleTimeString()}</span>
                     <span>•</span>
-                    <span>{formatDuration(record.settings.text)}</span>
+                    <span>{getDurationDisplay(record)}</span>
                     {record.settings.voiceName && (
                       <>
                         <span>•</span>

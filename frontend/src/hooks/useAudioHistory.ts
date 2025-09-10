@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AudioRecord } from '../types';
+import { extractAudioDuration } from '../lib/utils';
 
 const STORAGE_KEY = 'chatterbox-audio-history';
 const DB_NAME = 'chatterbox-audio';
@@ -106,6 +107,8 @@ interface StoredAudioMetadata {
   id: string;
   name: string;
   createdAt: string;
+  // duration?: number; // Duration in seconds
+  duration?: number | null | undefined;
   settings: {
     text: string;
     exaggeration: number;
@@ -133,12 +136,25 @@ export function useAudioHistory() {
             const blob = await getAudioFile(meta.id);
             if (blob) {
               const audioUrl = URL.createObjectURL(blob);
+
+              // Migration: extract duration for records that don't have it
+              let duration = meta.duration;
+              if (duration === undefined) {
+                try {
+                  duration = await extractAudioDuration(blob);
+                } catch (error) {
+                  console.warn('Failed to extract duration for record', meta.id, error);
+                  duration = undefined;
+                }
+              }
+
               loadedRecords.push({
                 id: meta.id,
                 name: meta.name,
                 audioUrl,
                 blob,
                 createdAt: new Date(meta.createdAt),
+                duration,
                 settings: meta.settings
               });
             }
@@ -168,6 +184,7 @@ export function useAudioHistory() {
         id: record.id,
         name: record.name,
         createdAt: record.createdAt.toISOString(),
+        duration: record.duration,
         settings: record.settings
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(metadata));
@@ -194,6 +211,9 @@ export function useAudioHistory() {
       // Store blob in IndexedDB
       await storeAudioFile(id, blob);
 
+      // Extract duration from the audio blob
+      const duration = await extractAudioDuration(blob);
+
       // Create URL for immediate use
       const audioUrl = URL.createObjectURL(blob);
 
@@ -203,6 +223,7 @@ export function useAudioHistory() {
         audioUrl,
         blob,
         createdAt: timestamp,
+        duration: duration || undefined,
         settings
       };
 

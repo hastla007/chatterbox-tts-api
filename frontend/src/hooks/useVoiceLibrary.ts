@@ -12,7 +12,8 @@ const convertToVoiceSample = (backendVoice: any): VoiceSample => {
     file: null as any, // We don't have the original File object for backend voices
     audioUrl: '', // We'll generate this on demand via download endpoint
     uploadDate: new Date(backendVoice.upload_date),
-    aliases: backendVoice.aliases || []
+    aliases: backendVoice.aliases || [],
+    language: backendVoice.language || 'en' // Default to English if not specified
   };
 };
 
@@ -93,12 +94,12 @@ export function useVoiceLibrary() {
     };
   }, [voicesQuery.data]);
 
-  const addVoice = useCallback(async (file: File, customName?: string): Promise<VoiceSample> => {
+  const addVoice = useCallback(async (file: File, customName?: string, language?: string): Promise<VoiceSample> => {
     const voiceName = customName || file.name.replace(/\.[^/.]+$/, "");
 
     try {
       // Upload to backend
-      await ttsService.uploadVoice(voiceName, file);
+      await ttsService.uploadVoice(voiceName, file, language);
 
       // Create new voice sample
       const audioUrl = URL.createObjectURL(file);
@@ -108,7 +109,8 @@ export function useVoiceLibrary() {
         file,
         audioUrl,
         uploadDate: new Date(),
-        aliases: []
+        aliases: [],
+        language: language || 'en'
       };
 
       // Invalidate voices query to refetch the list
