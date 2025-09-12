@@ -1090,6 +1090,8 @@ Fallback to the LKG (last known good) for the pre-multilingual release
 git clone --branch stable https://github.com/travisvn/chatterbox-tts-api
 ```
 
+[View `stable` branch](https://github.com/travisvn/chatterbox-tts-api/tree/stable) to see proper install / troubleshooting documentation
+
 ## Support
 
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
