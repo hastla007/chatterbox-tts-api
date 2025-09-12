@@ -36,6 +36,13 @@
 🔧 **Type Safety** - Full Pydantic validation for requests and responses  
 🧠 **Memory Management** - Advanced memory monitoring and automatic cleanup
 
+> [!IMPORTANT]
+> `resemble-ai/chatterbox` is currently broken for non-CUDA setups (see [chatterbox issues](https://github.com/resemble-ai/chatterbox/issues))
+> 
+> Revert to non-multilingual by using the `stable` branch of this repo
+>
+> [View more instructions](#issues-with-multilingual)
+
 ## ⚡️ Quick Start
 
 ```bash
