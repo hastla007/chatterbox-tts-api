@@ -35,6 +35,19 @@ ENDPOINT_ALIASES: Dict[str, List[str]] = {
     "/status/statistics": ["/v1/status/statistics", "/stats"],
     "/status/history/clear": ["/v1/status/history/clear"],
     "/info": ["/v1/info", "/api/info"],
+    "/audio/speech/long": ["/v1/audio/speech/long"],
+    "/audio/speech/long/jobs": ["/v1/audio/speech/long/jobs"],
+    "/audio/speech/long/jobs/{job_id}": ["/v1/audio/speech/long/jobs/{job_id}"],
+    "/audio/speech/long/{job_id}/download": ["/v1/audio/speech/long/{job_id}/download"],
+    "/audio/speech/long/{job_id}/pause": ["/v1/audio/speech/long/{job_id}/pause"],
+    "/audio/speech/long/{job_id}/resume": ["/v1/audio/speech/long/{job_id}/resume"],
+    "/audio/speech/long/{job_id}/sse": ["/v1/audio/speech/long/{job_id}/sse"],
+    "/audio/speech/long/{job_id}": ["/v1/audio/speech/long/{job_id}"],
+    "/audio/speech/long-history": ["/v1/audio/speech/long-history"],
+    "/audio/speech/long-history/stats": ["/v1/audio/speech/long-history/stats"],
+    "/audio/speech/long/{job_id}/details": ["/v1/audio/speech/long/{job_id}/details"],
+    "/audio/speech/long/{job_id}/retry": ["/v1/audio/speech/long/{job_id}/retry"],
+    "/audio/speech/long/bulk": ["/v1/audio/speech/long/bulk"],
 }
 
 

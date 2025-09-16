@@ -6,22 +6,27 @@ interface StatusProgressOverlayProps {
   progress: TTSProgress | undefined;
   isVisible: boolean;
   onDismiss?: () => void;
+  isLongText?: boolean;
 }
 
 export default function StatusProgressOverlay({
   progress,
   isVisible,
-  onDismiss
+  onDismiss,
+  isLongText = false
 }: StatusProgressOverlayProps) {
   const [isMinimized, setIsMinimized] = useState(false);
 
-  // Load minimized state from localStorage
+  // Load minimized state from localStorage and auto-minimize for long text
   useEffect(() => {
     const savedMinimized = localStorage.getItem('tts-progress-minimized');
     if (savedMinimized === 'true') {
       setIsMinimized(true);
+    } else if (isLongText) {
+      // Auto-minimize for long text requests by default
+      setIsMinimized(true);
     }
-  }, []);
+  }, [isLongText]);
 
   // Save minimized state to localStorage
   const handleMinimize = () => {
@@ -122,8 +127,14 @@ export default function StatusProgressOverlay({
 
   // Full modal
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      onClick={handleMinimize}
+    >
+      <div
+        className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header with controls */}
         <div className="flex items-center gap-3 mb-4">
           <div className={getStatusColor(progress.status)}>

@@ -4,13 +4,14 @@ Main API router combining all endpoints
 
 from fastapi import APIRouter
 
-from app.api.endpoints import speech, health, models, memory, config, status, voices
+from app.api.endpoints import speech, health, models, memory, config, status, voices, long_text
 
 # Create main router
 api_router = APIRouter()
 
 # Include all endpoint routers (using base_router for consistent aliasing)
 api_router.include_router(speech.base_router, tags=["Text-to-Speech"])
+api_router.include_router(long_text.base_router, tags=["Long Text TTS"])
 api_router.include_router(voices.base_router, tags=["Voice Library"])
 api_router.include_router(health.base_router, tags=["Health"])
 api_router.include_router(models.base_router, tags=["Models"])

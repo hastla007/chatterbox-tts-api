@@ -46,15 +46,16 @@ export function useProgressSettings() {
   };
 
   // Track when a request is made from this frontend
-  const trackRequest = (requestId?: string) => {
+  const trackRequest = (requestId?: string, requestType: 'regular' | 'long-text' = 'regular') => {
     if (requestId) {
       setCurrentRequestId(requestId);
-      // Store the request ID with our session ID for tracking
+      // Store the request ID with our session ID and type for tracking
       try {
         const myRequests = JSON.parse(localStorage.getItem('tts-my-requests') || '{}');
         myRequests[requestId] = {
           sessionId: sessionId.current,
           timestamp: Date.now(),
+          requestType,
         };
         localStorage.setItem('tts-my-requests', JSON.stringify(myRequests));
       } catch (error) {
@@ -75,6 +76,22 @@ export function useProgressSettings() {
       return requestInfo && requestInfo.sessionId === sessionId.current;
     } catch (error) {
       console.warn('Failed to check request ownership:', error);
+      return false;
+    }
+  };
+
+  // Check if a request is for long text processing
+  const isLongTextRequest = (requestId?: string): boolean => {
+    if (!requestId) {
+      return false;
+    }
+
+    try {
+      const myRequests = JSON.parse(localStorage.getItem('tts-my-requests') || '{}');
+      const requestInfo = myRequests[requestId];
+      return requestInfo && requestInfo.requestType === 'long-text';
+    } catch (error) {
+      console.warn('Failed to check request type:', error);
       return false;
     }
   };
@@ -129,6 +146,7 @@ export function useProgressSettings() {
     updateSettings,
     trackRequest,
     isMyRequest,
+    isLongTextRequest,
     shouldShowProgress,
     dismissProgress,
     sessionId: sessionId.current,

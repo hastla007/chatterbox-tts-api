@@ -5,6 +5,40 @@ All notable changes to the Chatterbox TTS API project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-09-15
+
+### Feature: Long Text Synthesis
+
+This release introduces the capability to synthesize long-form text by splitting it into manageable chunks, processing them in the background, and concatenating the final audio.
+
+The frontend now allows for long text inputs and has been revamped completely to be able to handle the status of the processing, to keep a history of previous long-text speech generations (and their configurations), etc.
+
+### Added
+
+#### Long Text Job Processing
+
+- **Asynchronous Job Handling**: Implemented a background processing system to handle long text synthesis jobs without blocking the API.
+- **New API Endpoints**: Introduced a new set of endpoints for creating long text jobs, querying their status, and performing bulk actions.
+- **Audio Concatenation**: Integrated `pydub` to seamlessly concatenate generated audio chunks into a single, coherent audio file.
+
+#### Frontend Integration
+
+- **Job Management UI**: Added a new section in the frontend to submit text for long synthesis, monitor job progress, and download the final audio.
+- **Real-time Status Updates**: The UI now displays the real-time status and progress of ongoing long text jobs.
+
+#### Configuration & Dependencies
+
+- **New Configuration**: Added environment variables to `.env.example` and `.env.example.docker` for configuring long text TTS behavior.
+- **New Dependencies**: Added `pydub` for audio manipulation and `sse-starlette` to support job processing.
+
+### Enhanced
+
+#### Input Handling
+
+- **Validation and Error Handling**: Improved validation for long text inputs to ensure job stability and provide clearer error feedback to the user.
+
+---
+
 ## [2.0.0] — 2025-09-10
 
 ### Major Release: Multilingual Support
@@ -14,28 +48,33 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 🌍 Added
 
 #### Multilingual TTS Engine
+
 - **22 Language Support**: Complete multilingual text-to-speech generation using the enhanced `chatterbox-tts` v0.1.4 multilingual model
 - **Supported Languages**: Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish
 - **Language-Aware Voice Cloning**: Upload and manage voice samples with specific language assignments
 - **Automatic Language Detection**: Speech generation automatically uses the voice's assigned language without requiring language parameters in requests
 
 #### New API Endpoints
+
 - **`GET /languages`**: Retrieve list of all supported languages with codes and names
 - **Enhanced Voice Upload**: Voice upload endpoint now accepts optional `language` parameter with validation against supported languages
 - **Language Metadata**: Voice library responses now include language information in metadata
 
 #### Configuration Management
+
 - **`USE_MULTILINGUAL_MODEL`**: New environment variable to enable/disable multilingual support (default: `true`)
 - **Automatic Model Selection**: System automatically selects multilingual or standard model based on configuration
 - **Graceful Fallbacks**: Falls back to English for unsupported languages or when multilingual mode is disabled
 
 #### Frontend Multilingual Integration
+
 - **Language Selection UI**: Complete language picker with native names and flag emojis
 - **Voice Library Language Display**: Language badges and indicators for each voice in the library
 - **Upload Modal Enhancement**: Integrated language selector in voice upload interface with real-time validation
 - **Visual Language Indicators**: Flag emojis and language codes throughout the user interface
 
 #### Developer Experience
+
 - **Comprehensive Documentation**: New `docs/MULTILINGUAL.md` with complete API reference and usage examples
 - **Testing Guide**: `docs/MULTILINGUAL_TESTING_GUIDE.md` with step-by-step testing instructions
 - **Language Constants**: Frontend language utilities and constants for consistent UI display
@@ -44,18 +83,21 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 🔄 Enhanced
 
 #### Backend Architecture
+
 - **Speech Generation Pipeline**: Updated all speech endpoints to use `resolve_voice_path_and_language()` for automatic language detection
 - **Streaming Support**: All streaming endpoints now support multilingual voices with language-aware processing
 - **Voice Library System**: Enhanced voice metadata storage to include language information with backward compatibility
 - **Memory Management**: Optimized memory handling for multilingual model operations
 
 #### API Improvements
+
 - **Request Validation**: Enhanced voice upload validation with language code verification
 - **Response Models**: Updated voice library responses to include language metadata
 - **Error Handling**: Improved error messages for language validation and unsupported language scenarios
 - **OpenAI Compatibility**: Maintained full OpenAI API compatibility while adding multilingual capabilities
 
 #### Frontend Enhancements
+
 - **Language Utilities**: New frontend utilities for language display, validation, and flag emoji mapping
 - **State Management**: Enhanced voice library state management to handle language metadata
 - **User Experience**: Improved upload workflow with language selection and validation feedback
@@ -64,18 +106,21 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 🔧 Technical Implementation
 
 #### Core Components Added
+
 - **`app/core/mtl.py`**: Multilingual support module with language constants and utilities
 - **Language Resolution**: `resolve_voice_path_and_language()` function for automatic language detection
 - **Model Loading**: Automatic multilingual vs standard model selection based on configuration
 - **Language Validation**: Comprehensive validation against supported language codes
 
 #### Frontend Components Added
+
 - **Language Selection Components**: Dropdown selectors with native names and flag emojis
 - **Language Display Utilities**: Consistent language representation across the interface
 - **Voice Upload Enhancements**: Integrated language selection in upload modal
 - **Language Constants**: Complete mapping of language codes to names and flags
 
 #### Database & Storage
+
 - **Voice Metadata Enhancement**: Extended voice storage to include language information
 - **Backward Compatibility**: Existing voices automatically assigned English (`"en"`) language
 - **Migration Support**: Seamless upgrade path for existing voice libraries
@@ -83,6 +128,7 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 🚀 Breaking Changes
 
 #### Dependency Updates
+
 - **chatterbox-tts Version**: Upgraded from `1.0.4` to `0.1.4` (breaking change requiring dependency update)
 - **Model Architecture**: New multilingual model may require initial download and setup
 - **Python Compatibility**: Enhanced compatibility testing for Python 3.11+ environments
@@ -90,11 +136,13 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 📚 Documentation
 
 #### New Documentation
+
 - **`docs/MULTILINGUAL.md`**: Comprehensive multilingual feature documentation with API reference
 - **`docs/MULTILINGUAL_TESTING_GUIDE.md`**: Step-by-step testing guide for multilingual functionality
 - **README Updates**: Enhanced main documentation with multilingual usage examples and configuration guide
 
 #### API Documentation
+
 - **Language Endpoints**: Complete API reference for new language-related endpoints
 - **Usage Examples**: Multilingual examples in multiple programming languages
 - **Migration Guide**: Instructions for upgrading existing installations to multilingual support
@@ -102,12 +150,14 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 🔄 Migration Notes
 
 #### For Existing Users
+
 - **Automatic Upgrade**: Multilingual support is enabled by default for new installations
 - **Existing Voices**: All existing voices continue to work unchanged (default to English)
 - **Configuration**: Set `USE_MULTILINGUAL_MODEL=false` to disable multilingual support if needed
 - **Dependencies**: Run `uv sync` or `pip install -r requirements.txt` to update to new chatterbox-tts version
 
 #### Compatibility
+
 - **API Compatibility**: All existing API endpoints remain unchanged and fully compatible
 - **Voice Library**: Existing voice libraries are automatically migrated with language metadata
 - **Frontend**: Existing frontend installations receive multilingual UI enhancements automatically
@@ -115,11 +165,13 @@ This major version introduces comprehensive multilingual text-to-speech capabili
 ### 🎯 Performance
 
 #### Model Optimization
+
 - **Memory Management**: Optimized memory usage for multilingual model operations
 - **Language Switching**: Efficient language switching without model reloading
 - **Streaming Performance**: Maintained low-latency streaming across all supported languages
 
 #### Quality Improvements
+
 - **Voice Quality**: Enhanced voice cloning quality with language-specific optimizations
 - **Speech Synthesis**: Improved speech generation accuracy for non-English languages
 - **Cross-lingual Support**: Better handling of mixed-language content

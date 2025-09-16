@@ -30,7 +30,7 @@ function App() {
     <div className="min-h-screen flex flex-col">
       {/* Header with Navigation and Theme Toggle */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
+        <div className="container max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex-1 min-w-fit items-center gap-2">
               <h1 className="text-lg font-semibold min-w-fit">Chatterbox TTS</h1>
@@ -42,7 +42,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full">
+      <main className="flex-1 max-w-6xl mx-auto w-full">
         <Switch>
           <Route path="/" component={TTSPage} />
           <Route path="/memory-management" component={MemoryPage} />

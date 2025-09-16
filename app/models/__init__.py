@@ -23,17 +23,30 @@ from .responses import (
     SupportedLanguagesResponse,
     DefaultVoiceResponse
 )
+from .long_text import (
+    LongTextJobStatus,
+    LongTextRequest,
+    LongTextChunk,
+    LongTextJobMetadata,
+    LongTextProgress,
+    LongTextJobResponse,
+    LongTextJobListItem,
+    LongTextJobList,
+    LongTextJobCreateResponse,
+    LongTextJobAction,
+    LongTextSSEEvent
+)
 
 __all__ = [
     "TTSRequest",
     "HealthResponse",
-    "ModelInfo", 
+    "ModelInfo",
     "ModelsResponse",
     "ConfigResponse",
     "ErrorResponse",
     "SSEUsageInfo",
     "SSEAudioInfo",
-    "SSEAudioDelta", 
+    "SSEAudioDelta",
     "SSEAudioDone",
     "TTSProgressResponse",
     "TTSStatusResponse",
@@ -43,5 +56,16 @@ __all__ = [
     "VoiceLibraryResponse",
     "SupportedLanguageItem",
     "SupportedLanguagesResponse",
-    "DefaultVoiceResponse"
+    "DefaultVoiceResponse",
+    "LongTextJobStatus",
+    "LongTextRequest",
+    "LongTextChunk",
+    "LongTextJobMetadata",
+    "LongTextProgress",
+    "LongTextJobResponse",
+    "LongTextJobListItem",
+    "LongTextJobList",
+    "LongTextJobCreateResponse",
+    "LongTextJobAction",
+    "LongTextSSEEvent"
 ] 

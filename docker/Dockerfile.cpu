@@ -18,13 +18,17 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
+# Activate the virtual environment for subsequent RUN commands
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
 # Install PyTorch CPU version first (to avoid CUDA dependencies)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # Copy requirements (excluding torch/torchaudio since we installed them above)
 COPY requirements.txt ./
-RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-multipart requests psutil
+RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-multipart requests psutil pydub sse-starlette
 
 # Install chatterbox-tts — with the breaking fix (pkuseg package exclusion) 
 RUN pip install git+https://github.com/travisvn/chatterbox-multilingual.git@exp
@@ -37,7 +41,7 @@ COPY main.py ./
 COPY voice-sample.mp3 ./voice-sample.mp3
 
 # Create directories for model cache and voice library (separate from source code)
-RUN mkdir -p /cache /voices
+RUN mkdir -p /cache /voices /data/long_text_jobs
 
 # Set default environment variables (force CPU)
 ENV PORT=4123
@@ -51,6 +55,14 @@ ENV DEVICE=cpu
 ENV MODEL_CACHE_DIR=/cache
 ENV VOICE_LIBRARY_DIR=/voices
 ENV HOST=0.0.0.0
+
+# Long text TTS settings
+ENV LONG_TEXT_DATA_DIR=/data/long_text_jobs
+ENV LONG_TEXT_MAX_LENGTH=100000
+ENV LONG_TEXT_CHUNK_SIZE=2500
+ENV LONG_TEXT_SILENCE_PADDING_MS=200
+ENV LONG_TEXT_JOB_RETENTION_DAYS=7
+ENV LONG_TEXT_MAX_CONCURRENT_JOBS=3
 
 # Expose port
 EXPOSE ${PORT}

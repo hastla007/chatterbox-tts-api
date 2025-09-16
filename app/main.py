@@ -9,8 +9,10 @@ from fastapi.responses import JSONResponse
 
 from app.core.tts_model import initialize_model
 from app.core.voice_library import get_voice_library
+from app.core.background_tasks import start_background_processor, stop_background_processor
 from app.api.router import api_router
 from app.config import Config
+from app.core.version import get_version
 
 
 ascii_art = r"""
@@ -43,13 +45,23 @@ async def lifespan(app: FastAPI):
         print(f"Restored default voice: {default_voice}")
     else:
         print("Using system default voice")
-    
+
+    # Start background processor for long text TTS jobs
+    print("Starting long text background processor...")
+    await start_background_processor()
+    print("Long text background processor started")
+
     # Note: We don't await the model initialization here
     # The server will start immediately and health checks will show initialization status
     
     yield
     
     # Shutdown (cleanup if needed)
+    # Stop background processor
+    print("Stopping long text background processor...")
+    await stop_background_processor()
+    print("Long text background processor stopped")
+
     # Cancel model initialization if it's still running
     if not model_init_task.done():
         model_init_task.cancel()
@@ -63,7 +75,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Chatterbox TTS API",
     description="REST API for Chatterbox TTS with OpenAI-compatible endpoints",
-    version="1.0.0",
+    version=get_version(),
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan

@@ -81,3 +81,5 @@ volumes:
     driver: local
   chatterbox-voices:
     driver: local
+  chatterbox-longtext-data:
+    driver: local

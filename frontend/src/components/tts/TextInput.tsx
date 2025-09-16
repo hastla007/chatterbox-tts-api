@@ -80,7 +80,7 @@ export default function TextInput({
           onChange={(e) => onChange(e.target.value)}
           className="h-32"
           placeholder={placeholder}
-          maxLength={maxLength}
+        // maxLength={maxLength}
         />
         <div className="text-right text-sm text-muted-foreground mt-1">
           {value.length}/{maxLength} characters
