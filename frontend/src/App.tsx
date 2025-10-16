@@ -9,8 +9,12 @@ import MemoryPage from './pages/MemoryPage';
 import { createTTSService } from './services/tts';
 import { useApiEndpoint } from './hooks/useApiEndpoint';
 import { getFrontendVersion } from './lib/version';
+import { useGlobalErrorHandler } from './hooks/useGlobalErrorHandler';
 
 function App() {
+  // Initialize global error handler
+  useGlobalErrorHandler();
+
   const { apiBaseUrl } = useApiEndpoint();
   const ttsService = createTTSService(apiBaseUrl);
 
