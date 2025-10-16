@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createLongTextTTSService } from '../services/longTextTTS';
 import type {
@@ -44,7 +44,12 @@ export function useLongTextTTS({ apiBaseUrl, sessionId }: UseLongTextTTSProps) {
   });
 
   const sseCleanupRef = useRef<(() => void) | null>(null);
-  const service = createLongTextTTSService(apiBaseUrl, sessionId);
+
+  // Memoize service creation to prevent recreating on every render
+  const service = useMemo(
+    () => createLongTextTTSService(apiBaseUrl, sessionId),
+    [apiBaseUrl, sessionId]
+  );
 
   // Save tracked job IDs to localStorage
   const updateTrackedJobIds = useCallback((jobIds: string[]) => {
@@ -158,6 +163,21 @@ export function useLongTextTTS({ apiBaseUrl, sessionId }: UseLongTextTTSProps) {
     }
   }, []);
 
+  // Download completed audio (defined before startJobMonitoring to avoid forward reference)
+  const downloadCompletedAudio = useCallback(async (jobId: string) => {
+    try {
+      const audioBlob = await service.downloadJobAudio(jobId);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      setState(prev => ({ ...prev, audioUrl }));
+    } catch (error) {
+      console.error('Failed to download completed audio:', error);
+      setState(prev => ({
+        ...prev,
+        error: `Failed to download audio: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }));
+    }
+  }, [service]);
+
   // Start monitoring a job with SSE
   const startJobMonitoring = useCallback((jobId: string) => {
     cleanupSSE();
@@ -221,22 +241,7 @@ export function useLongTextTTS({ apiBaseUrl, sessionId }: UseLongTextTTSProps) {
     );
 
     sseCleanupRef.current = cleanup;
-  }, [service]);
-
-  // Download completed audio
-  const downloadCompletedAudio = useCallback(async (jobId: string) => {
-    try {
-      const audioBlob = await service.downloadJobAudio(jobId);
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setState(prev => ({ ...prev, audioUrl }));
-    } catch (error) {
-      console.error('Failed to download completed audio:', error);
-      setState(prev => ({
-        ...prev,
-        error: `Failed to download audio: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }));
-    }
-  }, [service]);
+  }, [service, cleanupSSE, removeJobId, downloadCompletedAudio]);
 
   // Get job status manually (fallback if SSE fails)
   const getJobStatus = useCallback(async (jobId: string) => {
