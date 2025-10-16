@@ -236,8 +236,9 @@ export function useLongTextHistory({ apiBaseUrl, sessionId }: UseLongTextHistory
 
   // Update filters
   const updateFilters = useCallback((newFilters: Partial<LongTextHistoryFilter>) => {
-    updateSettings({ filters: { ...settings.filters, ...newFilters } });
-  }, [settings.filters, updateSettings]);
+    setSettings(prev => ({ ...prev, filters: { ...prev.filters, ...newFilters } }));
+    setCurrentPage(0);
+  }, []);
 
   // Update sort
   const updateSort = useCallback((sort: LongTextHistorySort) => {
