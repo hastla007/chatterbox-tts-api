@@ -233,12 +233,12 @@ export const createLongTextTTSService = (baseUrl: string, sessionId?: string) =>
         try {
           // Only parse if there's actual data to parse
           if (event.data && event.data.trim()) {
-            const data: LongTextSSEEvent = JSON.parse(event.data);
+            const data = JSON.parse(event.data);
             onEvent({
               job_id: jobId,
               timestamp: new Date().toISOString(),
               event_type: 'error',
-              data: data.data
+              data
             });
           }
           // If no data, this is likely a connection close event - ignore silently

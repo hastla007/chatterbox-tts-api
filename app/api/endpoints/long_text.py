@@ -539,7 +539,7 @@ async def job_progress_sse(job_id: str):
                 try:
                     # Get current job status and progress
                     metadata = job_manager._load_job_metadata(job_id)
-                    progress = await job_manager.get_progress(job_id)
+                    progress = job_manager.get_progress(job_id)
 
                     if not metadata or not progress:
                         break

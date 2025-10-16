@@ -169,8 +169,8 @@ export function useLongTextTTS({ apiBaseUrl, sessionId }: UseLongTextTTSProps) {
         setState(prev => {
           let newState = { ...prev };
 
-          // Update progress if provided
-          if (event.data.progress) {
+          // Update progress if provided (check that data exists first)
+          if (event.data && event.data.progress !== undefined) {
             newState.progress = event.data.progress;
           }
 
@@ -190,7 +190,7 @@ export function useLongTextTTS({ apiBaseUrl, sessionId }: UseLongTextTTSProps) {
             case 'job_failed':
               console.log(`Long text job ${jobId} failed, setting isJobActive to false`);
               newState.isJobActive = false;
-              newState.error = event.data.error || event.data.message || 'Job failed';
+              newState.error = event.data?.error || event.data?.message || 'Job failed';
               // Remove job from tracking since it failed
               removeJobId(jobId);
               break;
