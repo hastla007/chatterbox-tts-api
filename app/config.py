@@ -73,12 +73,6 @@ class Config:
             raise ValueError(f"CUDA_CACHE_CLEAR_INTERVAL must be positive, got {cls.CUDA_CACHE_CLEAR_INTERVAL}")
         if cls.LONG_TEXT_MIN_LENGTH <= 0:
             raise ValueError(f"LONG_TEXT_MIN_LENGTH must be positive, got {cls.LONG_TEXT_MIN_LENGTH}")
-        if cls.LONG_TEXT_MIN_LENGTH < cls.MAX_TOTAL_LENGTH:
-            raise ValueError(
-                "LONG_TEXT_MIN_LENGTH ({}) must be greater than or equal to MAX_TOTAL_LENGTH ({})".format(
-                    cls.LONG_TEXT_MIN_LENGTH, cls.MAX_TOTAL_LENGTH
-                )
-            )
         if cls.LONG_TEXT_MAX_LENGTH <= cls.LONG_TEXT_MIN_LENGTH:
             raise ValueError(
                 "LONG_TEXT_MAX_LENGTH ({}) must be greater than LONG_TEXT_MIN_LENGTH ({})".format(
