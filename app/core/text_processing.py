@@ -595,8 +595,13 @@ def validate_long_text_input(text: str) -> Tuple[bool, str]:
 
     text_length = len(text.strip())
 
-    if text_length <= Config.MAX_TOTAL_LENGTH:
-        return False, f"Text is {text_length} characters. Use regular TTS for texts under {Config.MAX_TOTAL_LENGTH} characters"
+    if text_length <= Config.LONG_TEXT_MIN_LENGTH:
+        return False, (
+            "Text is {} characters. Use regular TTS for texts of {} characters or less".format(
+                text_length,
+                Config.LONG_TEXT_MIN_LENGTH,
+            )
+        )
 
     if text_length > Config.LONG_TEXT_MAX_LENGTH:
         return False, f"Text is too long ({text_length} characters). Maximum allowed: {Config.LONG_TEXT_MAX_LENGTH}"
