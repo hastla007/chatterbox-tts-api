@@ -36,6 +36,7 @@ class Config:
 
     # Long text processing settings
     LONG_TEXT_DATA_DIR = os.getenv('LONG_TEXT_DATA_DIR', './data/long_text_jobs')
+    LONG_TEXT_MIN_LENGTH = int(os.getenv('LONG_TEXT_MIN_LENGTH', 3000))
     LONG_TEXT_MAX_LENGTH = int(os.getenv('LONG_TEXT_MAX_LENGTH', 100000))
     LONG_TEXT_CHUNK_SIZE = int(os.getenv('LONG_TEXT_CHUNK_SIZE', 2500))
     LONG_TEXT_SILENCE_PADDING_MS = int(os.getenv('LONG_TEXT_SILENCE_PADDING_MS', 200))
@@ -70,8 +71,20 @@ class Config:
             raise ValueError(f"MEMORY_CLEANUP_INTERVAL must be positive, got {cls.MEMORY_CLEANUP_INTERVAL}")
         if cls.CUDA_CACHE_CLEAR_INTERVAL <= 0:
             raise ValueError(f"CUDA_CACHE_CLEAR_INTERVAL must be positive, got {cls.CUDA_CACHE_CLEAR_INTERVAL}")
-        if cls.LONG_TEXT_MAX_LENGTH <= cls.MAX_TOTAL_LENGTH:
-            raise ValueError(f"LONG_TEXT_MAX_LENGTH ({cls.LONG_TEXT_MAX_LENGTH}) must be greater than MAX_TOTAL_LENGTH ({cls.MAX_TOTAL_LENGTH})")
+        if cls.LONG_TEXT_MIN_LENGTH <= 0:
+            raise ValueError(f"LONG_TEXT_MIN_LENGTH must be positive, got {cls.LONG_TEXT_MIN_LENGTH}")
+        if cls.LONG_TEXT_MIN_LENGTH < cls.MAX_TOTAL_LENGTH:
+            raise ValueError(
+                "LONG_TEXT_MIN_LENGTH ({}) must be greater than or equal to MAX_TOTAL_LENGTH ({})".format(
+                    cls.LONG_TEXT_MIN_LENGTH, cls.MAX_TOTAL_LENGTH
+                )
+            )
+        if cls.LONG_TEXT_MAX_LENGTH <= cls.LONG_TEXT_MIN_LENGTH:
+            raise ValueError(
+                "LONG_TEXT_MAX_LENGTH ({}) must be greater than LONG_TEXT_MIN_LENGTH ({})".format(
+                    cls.LONG_TEXT_MAX_LENGTH, cls.LONG_TEXT_MIN_LENGTH
+                )
+            )
         if cls.LONG_TEXT_CHUNK_SIZE <= 0:
             raise ValueError(f"LONG_TEXT_CHUNK_SIZE must be positive, got {cls.LONG_TEXT_CHUNK_SIZE}")
         if cls.LONG_TEXT_CHUNK_SIZE >= cls.MAX_TOTAL_LENGTH:
