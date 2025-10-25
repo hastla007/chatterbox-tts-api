@@ -45,8 +45,8 @@ class LongTextRequest(BaseModel):
     def validate_input_length(cls, v: str) -> str:
         cleaned = v.strip()
         text_length = len(cleaned)
-        min_length = Config.LONG_TEXT_MIN_LENGTH
-        max_length = Config.LONG_TEXT_MAX_LENGTH
+        min_length = Config.get_long_text_min_length()
+        max_length = Config.get_long_text_max_length()
 
         if text_length < min_length:
             raise ValueError(

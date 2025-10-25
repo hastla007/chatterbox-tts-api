@@ -51,7 +51,7 @@ async def get_config():
             "temperature": Config.TEMPERATURE,
             "max_chunk_length": Config.MAX_CHUNK_LENGTH,
             "max_total_length": Config.MAX_TOTAL_LENGTH,
-            "long_text_min_length": Config.LONG_TEXT_MIN_LENGTH,
+            "long_text_min_length": Config.get_long_text_min_length(),
         },
         memory_management={
             "memory_cleanup_interval": Config.MEMORY_CLEANUP_INTERVAL,
