@@ -594,12 +594,19 @@ def validate_long_text_input(text: str) -> Tuple[bool, str]:
         return False, "Input text cannot be empty"
 
     text_length = len(text.strip())
+    min_length = Config.get_long_text_min_length()
+    max_length = Config.get_long_text_max_length()
 
-    if text_length <= Config.MAX_TOTAL_LENGTH:
-        return False, f"Text is {text_length} characters. Use regular TTS for texts under {Config.MAX_TOTAL_LENGTH} characters"
+    if text_length < min_length:
+        return False, (
+            "Text must be at least {} characters for long-text processing (received {} characters)".format(
+                min_length,
+                text_length,
+            )
+        )
 
-    if text_length > Config.LONG_TEXT_MAX_LENGTH:
-        return False, f"Text is too long ({text_length} characters). Maximum allowed: {Config.LONG_TEXT_MAX_LENGTH}"
+    if text_length > max_length:
+        return False, f"Text is too long ({text_length} characters). Maximum allowed: {max_length}"
 
     # Check for excessive repetition (potential spam/abuse)
     words = text.split()

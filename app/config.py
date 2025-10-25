@@ -12,7 +12,10 @@ load_dotenv()
 
 class Config:
     """Application configuration class"""
-    
+
+    _DEFAULT_LONG_TEXT_MIN_LENGTH = 3000
+    _DEFAULT_LONG_TEXT_MAX_LENGTH = 100000
+
     # Server settings
     HOST = os.getenv('HOST', '0.0.0.0')
     PORT = int(os.getenv('PORT', 4123))
@@ -36,7 +39,8 @@ class Config:
 
     # Long text processing settings
     LONG_TEXT_DATA_DIR = os.getenv('LONG_TEXT_DATA_DIR', './data/long_text_jobs')
-    LONG_TEXT_MAX_LENGTH = int(os.getenv('LONG_TEXT_MAX_LENGTH', 100000))
+    LONG_TEXT_MIN_LENGTH = int(os.getenv('LONG_TEXT_MIN_LENGTH', _DEFAULT_LONG_TEXT_MIN_LENGTH))
+    LONG_TEXT_MAX_LENGTH = int(os.getenv('LONG_TEXT_MAX_LENGTH', _DEFAULT_LONG_TEXT_MAX_LENGTH))
     LONG_TEXT_CHUNK_SIZE = int(os.getenv('LONG_TEXT_CHUNK_SIZE', 2500))
     LONG_TEXT_SILENCE_PADDING_MS = int(os.getenv('LONG_TEXT_SILENCE_PADDING_MS', 200))
     LONG_TEXT_JOB_RETENTION_DAYS = int(os.getenv('LONG_TEXT_JOB_RETENTION_DAYS', 7))
@@ -56,6 +60,9 @@ class Config:
     @classmethod
     def validate(cls):
         """Validate configuration values"""
+        min_length = cls.get_long_text_min_length()
+        max_length = cls.get_long_text_max_length()
+
         if not (0.25 <= cls.EXAGGERATION <= 2.0):
             raise ValueError(f"EXAGGERATION must be between 0.25 and 2.0, got {cls.EXAGGERATION}")
         if not (0.0 <= cls.CFG_WEIGHT <= 1.0):
@@ -70,8 +77,14 @@ class Config:
             raise ValueError(f"MEMORY_CLEANUP_INTERVAL must be positive, got {cls.MEMORY_CLEANUP_INTERVAL}")
         if cls.CUDA_CACHE_CLEAR_INTERVAL <= 0:
             raise ValueError(f"CUDA_CACHE_CLEAR_INTERVAL must be positive, got {cls.CUDA_CACHE_CLEAR_INTERVAL}")
-        if cls.LONG_TEXT_MAX_LENGTH <= cls.MAX_TOTAL_LENGTH:
-            raise ValueError(f"LONG_TEXT_MAX_LENGTH ({cls.LONG_TEXT_MAX_LENGTH}) must be greater than MAX_TOTAL_LENGTH ({cls.MAX_TOTAL_LENGTH})")
+        if min_length <= 0:
+            raise ValueError(f"LONG_TEXT_MIN_LENGTH must be positive, got {min_length}")
+        if max_length <= min_length:
+            raise ValueError(
+                "LONG_TEXT_MAX_LENGTH ({}) must be greater than LONG_TEXT_MIN_LENGTH ({})".format(
+                    max_length, min_length
+                )
+            )
         if cls.LONG_TEXT_CHUNK_SIZE <= 0:
             raise ValueError(f"LONG_TEXT_CHUNK_SIZE must be positive, got {cls.LONG_TEXT_CHUNK_SIZE}")
         if cls.LONG_TEXT_CHUNK_SIZE >= cls.MAX_TOTAL_LENGTH:
@@ -82,6 +95,38 @@ class Config:
             raise ValueError(f"LONG_TEXT_JOB_RETENTION_DAYS must be positive, got {cls.LONG_TEXT_JOB_RETENTION_DAYS}")
         if cls.LONG_TEXT_MAX_CONCURRENT_JOBS <= 0:
             raise ValueError(f"LONG_TEXT_MAX_CONCURRENT_JOBS must be positive, got {cls.LONG_TEXT_MAX_CONCURRENT_JOBS}")
+
+    @staticmethod
+    def _get_int_env(name: str, fallback: int) -> int:
+        value = os.getenv(name)
+        if value is None or value == "":
+            return fallback
+
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"{name} must be an integer, got {value!r}") from exc
+
+    @classmethod
+    def refresh_long_text_limits(cls) -> None:
+        cls.LONG_TEXT_MIN_LENGTH = cls._get_int_env(
+            "LONG_TEXT_MIN_LENGTH",
+            cls._DEFAULT_LONG_TEXT_MIN_LENGTH,
+        )
+        cls.LONG_TEXT_MAX_LENGTH = cls._get_int_env(
+            "LONG_TEXT_MAX_LENGTH",
+            cls._DEFAULT_LONG_TEXT_MAX_LENGTH,
+        )
+
+    @classmethod
+    def get_long_text_min_length(cls) -> int:
+        cls.refresh_long_text_limits()
+        return cls.LONG_TEXT_MIN_LENGTH
+
+    @classmethod
+    def get_long_text_max_length(cls) -> int:
+        cls.refresh_long_text_limits()
+        return cls.LONG_TEXT_MAX_LENGTH
 
 
 def detect_device():

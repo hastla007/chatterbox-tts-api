@@ -8,6 +8,8 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 
+from app.config import Config
+
 
 class LongTextJobStatus(str, Enum):
     """Status enum for long text jobs"""
@@ -28,7 +30,9 @@ class LongTextJobActionType(str, Enum):
 
 class LongTextRequest(BaseModel):
     """Request model for long text TTS generation"""
-    input: str = Field(..., min_length=3001, description="Text to convert to speech (must be > 3000 characters)")
+    input: str = Field(
+        ..., description="Text to convert to speech (must meet the configured minimum length)"
+    )
     voice: Optional[str] = Field(None, description="Voice name from library or OpenAI voice name")
     response_format: Optional[str] = Field("mp3", description="Audio format (mp3 or wav)")
     exaggeration: Optional[float] = Field(None, ge=0.25, le=2.0, description="Emotion intensity")
@@ -38,10 +42,23 @@ class LongTextRequest(BaseModel):
 
     @field_validator('input')
     @classmethod
-    def validate_input_length(cls, v):
-        if len(v) > 100000:  # Will be validated against Config.LONG_TEXT_MAX_LENGTH at runtime
-            raise ValueError('Input text exceeds maximum length of 100000 characters')
-        return v.strip()
+    def validate_input_length(cls, v: str) -> str:
+        cleaned = v.strip()
+        text_length = len(cleaned)
+        min_length = Config.get_long_text_min_length()
+        max_length = Config.get_long_text_max_length()
+
+        if text_length < min_length:
+            raise ValueError(
+                f"Input text must be at least {min_length} characters for long text processing"
+            )
+
+        if text_length > max_length:
+            raise ValueError(
+                f"Input text exceeds maximum length of {max_length} characters"
+            )
+
+        return cleaned
 
 
 class LongTextChunk(BaseModel):
@@ -63,7 +80,7 @@ class LongTextJobMetadata(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     status: LongTextJobStatus = Field(default=LongTextJobStatus.PENDING)
-    text_length: int = Field(..., ge=3001, description="Total characters in input text")
+    text_length: int = Field(..., ge=1, description="Total characters in input text")
     text_hash: str = Field(..., description="SHA256 hash of input text for deduplication")
     total_chunks: int = Field(..., ge=1, description="Total number of chunks")
     completed_chunks: int = Field(default=0, ge=0, description="Number of completed chunks")
