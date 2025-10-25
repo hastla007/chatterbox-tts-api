@@ -1,5 +1,5 @@
 """
-Long text TTS endpoints for processing texts > 3000 characters
+Long text TTS endpoints for processing texts that exceed the configured minimum length
 """
 
 import asyncio
@@ -43,7 +43,7 @@ async def create_long_text_job(request: LongTextRequest):
     """
     Submit a long text TTS job for background processing.
 
-    Text must be > 3000 characters to use this endpoint.
+    Text must exceed the configured minimum length to use this endpoint.
     For shorter texts, use /audio/speech instead.
     """
     try:
