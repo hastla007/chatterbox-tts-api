@@ -8,7 +8,7 @@ import os
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 
 from app.config import Config
 from app.core.long_text_jobs import get_job_manager
@@ -120,7 +120,7 @@ class LongTextProcessor:
             del self.active_tasks[job_id]
 
     async def _process_job(self, job_id: str):
-        """Process a single long text job"""
+        """Process a single long text job with batched GPU inference"""
         logger.info(f"Starting processing for job {job_id}")
 
         try:
@@ -150,10 +150,6 @@ class LongTextProcessor:
                 'chunking_strategy', Config.LONG_TEXT_CHUNKING_STRATEGY
             )
 
-            pause_settings = parameters.get('pause_settings') or {}
-            pause_enable = pause_settings.get('enable')
-            pause_custom = pause_settings.get('custom')
-
             # Phase 1: Text chunking
             await self._update_job_status(job_id, LongTextJobStatus.CHUNKING, "Splitting text into chunks")
 
@@ -174,84 +170,89 @@ class LongTextProcessor:
 
             logger.info(f"Job {job_id}: Split into {len(chunks)} chunks")
 
-            # Phase 2: Generate audio for each chunk
-            await self._update_job_status(job_id, LongTextJobStatus.PROCESSING, f"Generating audio for {len(chunks)} chunks")
+            # Phase 2: Generate audio for all chunks with batching
+            await self._update_job_status(
+                job_id,
+                LongTextJobStatus.PROCESSING,
+                f"Generating audio for {len(chunks)} chunks",
+            )
 
             voice_path, language_id = resolve_voice_path_and_language(metadata.voice)
 
-            chunk_audio_files = []
-            for i, chunk in enumerate(chunks):
-                # Check if job was paused or cancelled
+            batch_size = int(parameters.get('batch_size', Config.LONG_TEXT_BATCH_SIZE))
+            if batch_size <= 0:
+                batch_size = Config.LONG_TEXT_BATCH_SIZE
+
+            chunk_audio_data: List[Tuple[int, Any, LongTextChunk]] = []
+
+            for batch_start in range(0, len(chunks), batch_size):
                 current_metadata = self.job_manager._load_job_metadata(job_id)
                 if current_metadata and current_metadata.status in [LongTextJobStatus.PAUSED, LongTextJobStatus.CANCELLED]:
                     logger.info(f"Job {job_id} was paused/cancelled, stopping processing")
                     return
 
-                # Update current chunk
-                current_metadata.current_chunk = i
-                self.job_manager._save_job_metadata(current_metadata)
+                batch_end = min(batch_start + batch_size, len(chunks))
+                batch_chunks = chunks[batch_start:batch_end]
 
-                # Update chunk status
-                chunk.processing_started_at = datetime.utcnow()
-                chunks[i] = chunk  # Update in list
+                logger.info(
+                    f"Job {job_id}: Processing batch {batch_start // batch_size + 1} "
+                    f"(chunks {batch_start + 1}-{batch_end}/{len(chunks)})"
+                )
 
-                logger.info(f"Job {job_id}: Processing chunk {i+1}/{len(chunks)} ({len(chunk.text)} chars)")
-
-                try:
-                    # Generate audio for this chunk
-                    audio_buffer = await generate_speech_internal(
-                        text=chunk.text,
-                        voice_sample_path=voice_path,
-                        language_id=language_id,
-                        exaggeration=metadata.parameters.get('exaggeration'),
-                        cfg_weight=metadata.parameters.get('cfg_weight'),
-                        temperature=metadata.parameters.get('temperature'),
-                        enable_pauses=pause_enable,
-                        custom_pauses=pause_custom,
+                batch_tasks = []
+                for i, chunk in enumerate(batch_chunks, start=batch_start):
+                    batch_tasks.append(
+                        self._generate_chunk_audio(
+                            job_id=job_id,
+                            chunk=chunk,
+                            chunk_index=i,
+                            voice_path=voice_path,
+                            language_id=language_id,
+                            parameters=parameters,
+                        )
                     )
 
-                    # Save chunk audio file
-                    chunk_filename = f"chunk_{i+1:03d}.wav"
-                    chunk_audio_path = self.job_manager._get_job_file_paths(job_id)['chunks_dir'] / chunk_filename
+                batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
 
-                    with open(chunk_audio_path, 'wb') as f:
-                        f.write(audio_buffer.getvalue())
+                current_metadata = self.job_manager._load_job_metadata(job_id)
+                if not current_metadata:
+                    current_metadata = metadata
 
-                    # Update chunk metadata
-                    chunk.audio_file = chunk_filename
-                    chunk.processing_completed_at = datetime.utcnow()
-                    chunk.duration_ms = int((chunk.processing_completed_at - chunk.processing_started_at).total_seconds() * 1000)
+                for i, result in enumerate(batch_results, start=batch_start):
+                    chunk = chunks[i]
+                    if isinstance(result, Exception):
+                        logger.error(f"Job {job_id}: Failed to process chunk {i + 1}: {result}")
+                        chunk.error = str(result)
+                        chunks[i] = chunk
+                        if i not in current_metadata.failed_chunks:
+                            current_metadata.failed_chunks.append(i)
+                    else:
+                        audio_buffer, updated_chunk = result
+                        chunk_audio_data.append((i, audio_buffer, updated_chunk))
+                        chunks[i] = updated_chunk
 
-                    chunk_audio_files.append(chunk_audio_path)
-                    chunks[i] = chunk
+                completed_chunks = len([c for c in chunks if c.audio_file])
+                current_metadata.completed_chunks = completed_chunks
+                current_metadata.current_chunk = min(batch_end, len(chunks)) - 1
+                self.job_manager._save_job_metadata(current_metadata)
+                self.job_manager._save_chunks_data(job_id, chunks)
 
-                    # Update job progress
-                    current_metadata.completed_chunks = i + 1
-                    self.job_manager._save_job_metadata(current_metadata)
-                    self.job_manager._save_chunks_data(job_id, chunks)
-
-                    logger.info(f"Job {job_id}: Completed chunk {i+1}/{len(chunks)}")
-
-                except Exception as e:
-                    logger.error(f"Job {job_id}: Failed to process chunk {i+1}: {e}")
-                    chunk.error = str(e)
-                    chunks[i] = chunk
-
-                    # Mark chunk as failed
-                    if i not in current_metadata.failed_chunks:
-                        current_metadata.failed_chunks.append(i)
-                        self.job_manager._save_job_metadata(current_metadata)
-
-                    # For now, continue with other chunks (could be made configurable)
-                    continue
-
-            # Check if we have enough successful chunks to continue
-            successful_chunks = [f for f in chunk_audio_files if f.exists()]
-            if len(successful_chunks) == 0:
+            if not chunk_audio_data:
                 await self._fail_job(job_id, "No chunks were successfully generated")
                 return
-            elif len(successful_chunks) < len(chunks):
-                logger.warning(f"Job {job_id}: Only {len(successful_chunks)}/{len(chunks)} chunks generated successfully")
+
+            if len(chunk_audio_data) < len(chunks):
+                logger.warning(
+                    f"Job {job_id}: Only {len(chunk_audio_data)}/{len(chunks)} chunks generated successfully"
+                )
+
+            logger.info(f"Job {job_id}: Writing {len(chunk_audio_data)} audio files to disk")
+            chunk_audio_files = await self._batch_write_audio_files(job_id, chunk_audio_data)
+
+            successful_chunks = [path for path in chunk_audio_files if path.exists()]
+            if not successful_chunks:
+                await self._fail_job(job_id, "No chunks were successfully generated")
+                return
 
             # Phase 3: Concatenate audio chunks
             await self._update_job_status(job_id, LongTextJobStatus.PROCESSING, "Combining audio chunks")
@@ -304,6 +305,83 @@ class LongTextProcessor:
             logger.error(f"Unexpected error processing job {job_id}: {e}")
             logger.error(traceback.format_exc())
             await self._fail_job(job_id, f"Unexpected error: {e}")
+
+    async def _generate_chunk_audio(
+        self,
+        job_id: str,
+        chunk: LongTextChunk,
+        chunk_index: int,
+        voice_path: str,
+        language_id: str,
+        parameters: Dict[str, Any],
+    ):
+        """Generate audio for a single chunk (executed in parallel within a batch)"""
+
+        chunk.processing_started_at = datetime.utcnow()
+        chunk.error = None
+
+        logger.debug(
+            f"Job {job_id}: Processing chunk {chunk_index + 1} ({len(chunk.text)} chars)"
+        )
+
+        try:
+            pause_settings = (parameters.get('pause_settings') or {}) if parameters else {}
+
+            audio_buffer = await generate_speech_internal(
+                text=chunk.text,
+                voice_sample_path=voice_path,
+                language_id=language_id,
+                exaggeration=(parameters or {}).get('exaggeration'),
+                cfg_weight=(parameters or {}).get('cfg_weight'),
+                temperature=(parameters or {}).get('temperature'),
+                enable_pauses=pause_settings.get('enable'),
+                custom_pauses=pause_settings.get('custom'),
+            )
+
+            chunk.audio_file = f"chunk_{chunk_index + 1:03d}.wav"
+            chunk.processing_completed_at = datetime.utcnow()
+            chunk.duration_ms = int(
+                (chunk.processing_completed_at - chunk.processing_started_at).total_seconds() * 1000
+            )
+
+            logger.debug(
+                f"Job {job_id}: Completed chunk {chunk_index + 1} in {chunk.duration_ms}ms"
+            )
+
+            return audio_buffer, chunk
+
+        except Exception as exc:
+            logger.error(f"Job {job_id}: Error processing chunk {chunk_index + 1}: {exc}")
+            raise
+
+    async def _batch_write_audio_files(
+        self,
+        job_id: str,
+        chunk_audio_data: List[Tuple[int, Any, LongTextChunk]],
+    ) -> List[Path]:
+        """Write generated audio buffers to disk after GPU work completes"""
+
+        job_paths = self.job_manager._get_job_file_paths(job_id)
+        written_paths: List[Path] = []
+
+        for chunk_index, audio_buffer, chunk in chunk_audio_data:
+            chunk_audio_path = job_paths['chunks_dir'] / chunk.audio_file
+
+            await asyncio.to_thread(
+                self._write_audio_file,
+                chunk_audio_path,
+                audio_buffer.getvalue(),
+            )
+
+            written_paths.append(chunk_audio_path)
+
+        logger.info(f"Job {job_id}: Wrote {len(written_paths)} audio files to disk")
+        return written_paths
+
+    def _write_audio_file(self, path: Path, data: bytes) -> None:
+        """Write binary audio data to disk"""
+        with open(path, 'wb') as file_obj:
+            file_obj.write(data)
 
     async def _update_job_status(self, job_id: str, status: LongTextJobStatus, message: str = ""):
         """Update job status"""
