@@ -70,6 +70,7 @@ async def create_long_text_job(request: LongTextRequest):
         chunk_size = request.get_chunk_size(preset_config)
         silence_padding = request.get_silence_padding()
         chunking_strategy = request.get_chunking_strategy()
+        pause_settings = request.resolve_pause_settings()
 
         # Get job manager and processor
         job_manager = get_job_manager()
@@ -87,7 +88,9 @@ async def create_long_text_job(request: LongTextRequest):
             chunking_strategy=chunking_strategy,
             chunk_size=chunk_size,
             silence_padding=silence_padding,
-            quality_preset=preset_name
+            quality_preset=preset_name,
+            enable_pauses=pause_settings["enable"],
+            custom_pauses=pause_settings["custom"],
         )
 
         # Submit for background processing

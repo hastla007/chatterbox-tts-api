@@ -171,6 +171,8 @@ class LongTextJobManager:
         chunk_size: Optional[int] = None,
         silence_padding: Optional[int] = None,
         quality_preset: Optional[str] = None,
+        enable_pauses: Optional[bool] = None,
+        custom_pauses: Optional[Dict[str, int]] = None,
     ) -> Tuple[str, int]:
         """
         Create a new long text job
@@ -196,6 +198,21 @@ class LongTextJobManager:
             else Config.LONG_TEXT_SILENCE_PADDING_MS
         )
         resolved_quality_preset = quality_preset or Config.LONG_TEXT_QUALITY_PRESET
+
+        resolved_enable_pauses = (
+            Config.ENABLE_PUNCTUATION_PAUSES if enable_pauses is None else bool(enable_pauses)
+        )
+
+        resolved_custom_pauses = None
+        if custom_pauses:
+            resolved_custom_pauses = {}
+            for key, value in custom_pauses.items():
+                try:
+                    resolved_custom_pauses[str(key)] = int(value)
+                except (TypeError, ValueError):
+                    logger.debug("Ignoring invalid custom pause value %r=%r", key, value)
+            if not resolved_custom_pauses:
+                resolved_custom_pauses = None
 
         # Estimate number of chunks
         estimated_chunks = max(1, (len(text) + resolved_chunk_size - 1) // resolved_chunk_size)
@@ -227,6 +244,10 @@ class LongTextJobManager:
                 'chunk_size': resolved_chunk_size,
                 'quality_preset': resolved_quality_preset,
                 'silence_padding_ms': resolved_silence_padding,
+                'pause_settings': {
+                    'enable': resolved_enable_pauses,
+                    'custom': resolved_custom_pauses,
+                },
             },
             output_format=output_format,
             user_session_id=session_id
@@ -777,7 +798,13 @@ class LongTextJobManager:
             exaggeration=parameters.get('exaggeration'),
             cfg_weight=parameters.get('cfg_weight'),
             temperature=parameters.get('temperature'),
-            session_id=original_metadata.user_session_id
+            session_id=original_metadata.user_session_id,
+            chunking_strategy=parameters.get('chunking_strategy'),
+            chunk_size=parameters.get('chunk_size'),
+            silence_padding=parameters.get('silence_padding_ms'),
+            quality_preset=parameters.get('quality_preset'),
+            enable_pauses=(parameters.get('pause_settings') or {}).get('enable'),
+            custom_pauses=(parameters.get('pause_settings') or {}).get('custom'),
         )
 
         # Update metadata to link to original job

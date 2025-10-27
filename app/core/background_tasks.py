@@ -150,6 +150,10 @@ class LongTextProcessor:
                 'chunking_strategy', Config.LONG_TEXT_CHUNKING_STRATEGY
             )
 
+            pause_settings = parameters.get('pause_settings') or {}
+            pause_enable = pause_settings.get('enable')
+            pause_custom = pause_settings.get('custom')
+
             # Phase 1: Text chunking
             await self._update_job_status(job_id, LongTextJobStatus.CHUNKING, "Splitting text into chunks")
 
@@ -201,7 +205,9 @@ class LongTextProcessor:
                         language_id=language_id,
                         exaggeration=metadata.parameters.get('exaggeration'),
                         cfg_weight=metadata.parameters.get('cfg_weight'),
-                        temperature=metadata.parameters.get('temperature')
+                        temperature=metadata.parameters.get('temperature'),
+                        enable_pauses=pause_enable,
+                        custom_pauses=pause_custom,
                     )
 
                     # Save chunk audio file

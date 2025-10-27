@@ -1,11 +1,10 @@
-"""
-Text-to-speech endpoint
-"""
+"""Text-to-speech endpoint."""
 
 import io
 import os
 import asyncio
 import tempfile
+import logging
 import torch
 import torchaudio as ta
 import base64
@@ -22,12 +21,15 @@ from app.core import (
     split_text_into_chunks, concatenate_audio_chunks, add_route_aliases,
     TTSStatus, start_tts_request, update_tts_status, get_voice_library
 )
+from app.core.pause_handler import PauseHandler
 from app.core.tts_model import get_model, is_multilingual
 from app.core.text_processing import split_text_for_streaming, get_streaming_settings
 
 # Create router with aliasing support
 base_router = APIRouter()
 router = add_route_aliases(base_router)
+
+logger = logging.getLogger(__name__)
 
 # Request counter for memory management
 REQUEST_COUNTER = 0
@@ -147,14 +149,27 @@ async def generate_speech_internal(
     language_id: str = "en",
     exaggeration: Optional[float] = None,
     cfg_weight: Optional[float] = None,
-    temperature: Optional[float] = None
+    temperature: Optional[float] = None,
+    enable_pauses: Optional[bool] = None,
+    custom_pauses: Optional[Dict[str, int]] = None,
 ) -> io.BytesIO:
-    """Internal function to generate speech with given parameters"""
+    """Internal function to generate speech with given parameters."""
     global REQUEST_COUNTER
     REQUEST_COUNTER += 1
     
     # Start TTS request tracking
     voice_source = "uploaded file" if voice_sample_path != Config.VOICE_SAMPLE_PATH else "default"
+    resolved_enable_pauses = (
+        Config.ENABLE_PUNCTUATION_PAUSES if enable_pauses is None else bool(enable_pauses)
+    )
+    pause_overrides = {}
+    if custom_pauses:
+        for key, value in custom_pauses.items():
+            try:
+                pause_overrides[str(key)] = int(value)
+            except (TypeError, ValueError):
+                logger.debug("Ignoring invalid custom pause override %r=%r", key, value)
+
     request_id = start_tts_request(
         text=text,
         voice_source=voice_source,
@@ -162,7 +177,9 @@ async def generate_speech_internal(
             "exaggeration": exaggeration,
             "cfg_weight": cfg_weight,
             "temperature": temperature,
-            "voice_sample_path": voice_sample_path
+            "voice_sample_path": voice_sample_path,
+            "enable_pauses": resolved_enable_pauses,
+            "custom_pauses": pause_overrides,
         }
     )
     
@@ -203,41 +220,105 @@ async def generate_speech_internal(
             }
         )
 
-    audio_chunks = []
+    audio_chunks: List[Any] = []
     final_audio = None
     buffer = None
-    
+    assembled_segments: List[Any] = []
+    silence_segments: List[Any] = []
+
     try:
         # Get parameters with defaults
         exaggeration = exaggeration if exaggeration is not None else Config.EXAGGERATION
         cfg_weight = cfg_weight if cfg_weight is not None else Config.CFG_WEIGHT
         temperature = temperature if temperature is not None else Config.TEMPERATURE
-        
-        # Split text into chunks
-        update_tts_status(request_id, TTSStatus.CHUNKING, "Splitting text into chunks")
-        chunks = split_text_into_chunks(text, Config.MAX_CHUNK_LENGTH)
-        
+
+        # Prepare text segments (respect pause settings)
+        update_tts_status(request_id, TTSStatus.CHUNKING, "Preparing text segments")
+
+        if resolved_enable_pauses:
+            pause_defaults = {
+                "...": Config.ELLIPSIS_PAUSE_MS,
+                "—": Config.EM_DASH_PAUSE_MS,
+                "–": Config.EN_DASH_PAUSE_MS,
+                "\n\n": Config.PARAGRAPH_PAUSE_MS,
+                "\n": Config.LINE_BREAK_PAUSE_MS,
+            }
+            pause_defaults.update(pause_overrides)
+
+            pause_handler = PauseHandler(
+                enable_pauses=True,
+                custom_pauses=pause_defaults,
+                min_pause_ms=Config.MIN_PAUSE_MS,
+                max_pause_ms=Config.MAX_PAUSE_MS,
+            )
+
+            pause_chunks = pause_handler.process(text)
+            tts_segments: List[Dict[str, Any]] = []
+            for pause_chunk in pause_chunks:
+                sub_chunks = split_text_into_chunks(pause_chunk.text, Config.MAX_CHUNK_LENGTH)
+                for idx, sub_chunk in enumerate(sub_chunks):
+                    pause_after = pause_chunk.pause_after_ms if idx == len(sub_chunks) - 1 else 0
+                    if sub_chunk.strip():
+                        tts_segments.append({
+                            "text": sub_chunk,
+                            "pause_after_ms": pause_after,
+                        })
+        else:
+            raw_chunks = split_text_into_chunks(text, Config.MAX_CHUNK_LENGTH)
+            tts_segments = [
+                {"text": chunk, "pause_after_ms": 0}
+                for chunk in raw_chunks
+                if chunk.strip()
+            ]
+
+        if not tts_segments:
+            update_tts_status(request_id, TTSStatus.ERROR, "No text segments available for generation")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "message": "No valid text segments found after processing pauses.",
+                        "type": "invalid_request_error",
+                    }
+                },
+            )
+
         voice_source = "uploaded file" if voice_sample_path != Config.VOICE_SAMPLE_PATH else "configured sample"
-        print(f"Processing {len(chunks)} text chunks with {voice_source} and parameters:")
+        print(f"Processing {len(tts_segments)} text segments with {voice_source} and parameters:")
         print(f"  - Exaggeration: {exaggeration}")
         print(f"  - CFG Weight: {cfg_weight}")
         print(f"  - Temperature: {temperature}")
-        
+
         # Update status with chunk information
-        update_tts_status(request_id, TTSStatus.GENERATING_AUDIO, "Starting audio generation", 
-                        current_chunk=0, total_chunks=len(chunks))
-        
+        update_tts_status(
+            request_id,
+            TTSStatus.GENERATING_AUDIO,
+            "Starting audio generation",
+            current_chunk=0,
+            total_chunks=len(tts_segments),
+        )
+
         # Generate audio for each chunk with memory management
         loop = asyncio.get_event_loop()
-        
-        for i, chunk in enumerate(chunks):
+
+        channels = None
+        dtype = None
+
+        for i, segment in enumerate(tts_segments):
+            chunk = segment["text"]
+            pause_after_ms = int(segment["pause_after_ms"])
             # Update progress
-            current_step = f"Generating audio for chunk {i+1}/{len(chunks)}"
-            update_tts_status(request_id, TTSStatus.GENERATING_AUDIO, current_step, 
-                            current_chunk=i+1, total_chunks=len(chunks))
-            
-            print(f"Generating audio for chunk {i+1}/{len(chunks)}: '{chunk[:50]}{'...' if len(chunk) > 50 else ''}'")
-            
+            current_step = f"Generating audio for chunk {i+1}/{len(tts_segments)}"
+            update_tts_status(
+                request_id,
+                TTSStatus.GENERATING_AUDIO,
+                current_step,
+                current_chunk=i + 1,
+                total_chunks=len(tts_segments),
+            )
+
+            print(f"Generating audio for chunk {i+1}/{len(tts_segments)}: '{chunk[:50]}{'...' if len(chunk) > 50 else ''}'")
+
             # Use torch.no_grad() to prevent gradient accumulation
             with torch.no_grad():
                 # Run TTS generation in executor to avoid blocking
@@ -263,8 +344,24 @@ async def generate_speech_internal(
                 if hasattr(audio_tensor, 'detach'):
                     audio_tensor = audio_tensor.detach()
                 
+                if audio_tensor.dim() == 1:
+                    audio_tensor = audio_tensor.unsqueeze(0)
+
                 audio_chunks.append(audio_tensor)
-            
+                assembled_segments.append(audio_tensor)
+
+                if channels is None:
+                    channels = audio_tensor.shape[0]
+                if dtype is None:
+                    dtype = audio_tensor.dtype
+
+                if pause_after_ms > 0 and channels is not None and dtype is not None:
+                    silence_samples = max(0, int(round((pause_after_ms / 1000.0) * model.sr)))
+                    if silence_samples > 0:
+                        silence_tensor = torch.zeros((channels, silence_samples), dtype=dtype, device=audio_tensor.device)
+                        assembled_segments.append(silence_tensor)
+                        silence_segments.append(silence_tensor)
+
             # Periodic memory cleanup during generation
             if i > 0 and i % 3 == 0:  # Every 3 chunks
                 import gc
@@ -273,13 +370,18 @@ async def generate_speech_internal(
                     torch.cuda.empty_cache()
         
         # Concatenate all chunks with memory management
-        if len(audio_chunks) > 1:
+        if len(assembled_segments) == 1:
+            final_audio = assembled_segments[0]
+        else:
             update_tts_status(request_id, TTSStatus.CONCATENATING, "Concatenating audio chunks")
             print("Concatenating audio chunks...")
             with torch.no_grad():
-                final_audio = concatenate_audio_chunks(audio_chunks, model.sr)
-        else:
-            final_audio = audio_chunks[0]
+                if resolved_enable_pauses:
+                    final_audio = assembled_segments[0]
+                    for segment in assembled_segments[1:]:
+                        final_audio = torch.cat([final_audio, segment.to(final_audio.device)], dim=1)
+                else:
+                    final_audio = concatenate_audio_chunks(audio_chunks, model.sr)
         
         # Convert to WAV format
         update_tts_status(request_id, TTSStatus.FINALIZING, "Converting to WAV format")
@@ -320,16 +422,21 @@ async def generate_speech_internal(
             # Clean up all audio chunks
             for chunk in audio_chunks:
                 safe_delete_tensors(chunk)
-            
+
+            for silence in silence_segments:
+                safe_delete_tensors(silence)
+
             # Clean up final audio tensor
             if final_audio is not None:
                 safe_delete_tensors(final_audio)
                 if 'final_audio_cpu' in locals():
                     safe_delete_tensors(final_audio_cpu)
-            
+
             # Clear the list
             audio_chunks.clear()
-            
+            assembled_segments.clear()
+            silence_segments.clear()
+
             # Periodic memory cleanup
             if REQUEST_COUNTER % Config.MEMORY_CLEANUP_INTERVAL == 0:
                 cleanup_memory()
@@ -796,7 +903,11 @@ async def text_to_speech(request: TTSRequest):
     
     # Resolve voice name to file path and language
     voice_sample_path, language_id = resolve_voice_path_and_language(request.voice)
-    
+
+    enable_pauses = request.enable_pauses
+    if enable_pauses is None:
+        enable_pauses = Config.ENABLE_PUNCTUATION_PAUSES
+
     # Check if SSE streaming is requested
     if request.stream_format == "sse":
         # Return SSE streaming response
@@ -827,7 +938,9 @@ async def text_to_speech(request: TTSRequest):
             language_id=language_id,
             exaggeration=request.exaggeration,
             cfg_weight=request.cfg_weight,
-            temperature=request.temperature
+            temperature=request.temperature,
+            enable_pauses=enable_pauses,
+            custom_pauses=request.custom_pauses,
         )
         
         # Create response

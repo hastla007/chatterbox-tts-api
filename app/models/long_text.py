@@ -55,6 +55,14 @@ class LongTextRequest(BaseModel):
         ge=0,
         description="Silence padding between chunks in milliseconds",
     )
+    enable_pauses: Optional[bool] = Field(
+        None,
+        description="Enable punctuation-based pauses when generating chunk audio",
+    )
+    custom_pauses: Optional[Dict[str, int]] = Field(
+        None,
+        description="Custom pause patterns and durations in milliseconds",
+    )
 
     @field_validator('input')
     @classmethod
@@ -99,6 +107,39 @@ class LongTextRequest(BaseModel):
         if self.silence_padding_ms is not None:
             return self.silence_padding_ms
         return Config.LONG_TEXT_SILENCE_PADDING_MS
+
+    def resolve_pause_settings(self) -> Dict[str, Any]:
+        """Return pause handling configuration with defaults applied."""
+
+        enable = (
+            self.enable_pauses
+            if self.enable_pauses is not None
+            else Config.ENABLE_PUNCTUATION_PAUSES
+        )
+        return {
+            "enable": bool(enable),
+            "custom": self.custom_pauses or None,
+        }
+
+    @field_validator('custom_pauses')
+    @classmethod
+    def validate_custom_pauses(cls, value: Optional[Dict[str, Any]]):
+        if value is None:
+            return value
+
+        cleaned: Dict[str, int] = {}
+        for key, duration in value.items():
+            if duration is None:
+                raise ValueError(f'Pause duration for {key!r} cannot be None')
+            try:
+                int_duration = int(duration)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f'Invalid pause duration for {key!r}: {duration!r}') from exc
+            if int_duration < 0:
+                raise ValueError(f'Pause duration for {key!r} must be non-negative')
+            cleaned[str(key)] = int_duration
+
+        return cleaned
 
 
 class LongTextChunk(BaseModel):

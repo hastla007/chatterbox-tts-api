@@ -10,6 +10,8 @@ export interface TTSRequest {
   streaming_chunk_size?: number;
   streaming_strategy?: 'sentence' | 'paragraph' | 'fixed' | 'word';
   streaming_quality?: 'fast' | 'balanced' | 'high';
+  enable_pauses?: boolean;
+  custom_pauses?: Record<string, number>;
 }
 
 export interface HealthResponse {
@@ -338,6 +340,8 @@ export interface LongTextRequest {
   quality_preset?: 'fast' | 'balanced' | 'high';
   chunk_size?: number;
   session_id?: string;
+  enable_pauses?: boolean;
+  custom_pauses?: Record<string, number>;
 }
 
 export interface LongTextSSEEvent {
