@@ -508,7 +508,6 @@ def _chunk_hierarchical(text: str, max_length: int) -> List[str]:
 def split_text_for_long_generation(
     text: str,
     max_chunk_size: Optional[int] = None,
-    overlap_chars: int = 0,
     strategy: Optional[str] = None,
 ) -> List[LongTextChunk]:
     """Split long text into structured chunks ready for generation."""

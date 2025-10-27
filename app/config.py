@@ -60,7 +60,7 @@ class Config:
             "temperature": float(os.getenv('QUALITY_BALANCED_TEMPERATURE', '0.8')),
         },
         "high": {
-            "chunk_size": int(os.getenv('QUALITY_HIGH_CHUNK_SIZE', '3500')),
+            "chunk_size": int(os.getenv('QUALITY_HIGH_CHUNK_SIZE', '2800')),
             "cfg_weight": float(os.getenv('QUALITY_HIGH_CFG_WEIGHT', '0.7')),
             "temperature": float(os.getenv('QUALITY_HIGH_TEMPERATURE', '1.0')),
         },
