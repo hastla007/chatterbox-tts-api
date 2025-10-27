@@ -45,6 +45,26 @@ class Config:
     LONG_TEXT_SILENCE_PADDING_MS = int(os.getenv('LONG_TEXT_SILENCE_PADDING_MS', 200))
     LONG_TEXT_JOB_RETENTION_DAYS = int(os.getenv('LONG_TEXT_JOB_RETENTION_DAYS', 7))
     LONG_TEXT_MAX_CONCURRENT_JOBS = int(os.getenv('LONG_TEXT_MAX_CONCURRENT_JOBS', 3))
+    LONG_TEXT_CHUNKING_STRATEGY = os.getenv('LONG_TEXT_CHUNKING_STRATEGY', 'sentence')
+    LONG_TEXT_QUALITY_PRESET = os.getenv('LONG_TEXT_QUALITY_PRESET', 'balanced')
+
+    QUALITY_PRESETS = {
+        "fast": {
+            "chunk_size": int(os.getenv('QUALITY_FAST_CHUNK_SIZE', '1500')),
+            "cfg_weight": float(os.getenv('QUALITY_FAST_CFG_WEIGHT', '0.3')),
+            "temperature": float(os.getenv('QUALITY_FAST_TEMPERATURE', '0.6')),
+        },
+        "balanced": {
+            "chunk_size": int(os.getenv('QUALITY_BALANCED_CHUNK_SIZE', '2500')),
+            "cfg_weight": float(os.getenv('QUALITY_BALANCED_CFG_WEIGHT', '0.5')),
+            "temperature": float(os.getenv('QUALITY_BALANCED_TEMPERATURE', '0.8')),
+        },
+        "high": {
+            "chunk_size": int(os.getenv('QUALITY_HIGH_CHUNK_SIZE', '3500')),
+            "cfg_weight": float(os.getenv('QUALITY_HIGH_CFG_WEIGHT', '0.7')),
+            "temperature": float(os.getenv('QUALITY_HIGH_TEMPERATURE', '1.0')),
+        },
+    }
 
     # Multilingual model settings
     USE_MULTILINGUAL_MODEL = os.getenv('USE_MULTILINGUAL_MODEL', 'true').lower() == 'true'

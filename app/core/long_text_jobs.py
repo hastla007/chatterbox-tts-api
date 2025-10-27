@@ -158,14 +158,20 @@ class LongTextJobManager:
             logger.error(f"Failed to load input text for job {job_id}: {e}")
             return None
 
-    def create_job(self,
-                   text: str,
-                   voice: Optional[str] = None,
-                   output_format: str = "mp3",
-                   exaggeration: Optional[float] = None,
-                   cfg_weight: Optional[float] = None,
-                   temperature: Optional[float] = None,
-                   session_id: Optional[str] = None) -> Tuple[str, int]:
+    def create_job(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        output_format: str = "mp3",
+        exaggeration: Optional[float] = None,
+        cfg_weight: Optional[float] = None,
+        temperature: Optional[float] = None,
+        session_id: Optional[str] = None,
+        chunking_strategy: Optional[str] = None,
+        chunk_size: Optional[int] = None,
+        silence_padding: Optional[int] = None,
+        quality_preset: Optional[str] = None,
+    ) -> Tuple[str, int]:
         """
         Create a new long text job
 
@@ -178,8 +184,21 @@ class LongTextJobManager:
         # Calculate text hash for potential deduplication
         text_hash = self._generate_text_hash(text)
 
+        # Resolve chunking configuration
+        resolved_chunk_size = chunk_size or Config.LONG_TEXT_CHUNK_SIZE
+        if resolved_chunk_size <= 0:
+            resolved_chunk_size = Config.LONG_TEXT_CHUNK_SIZE
+
+        resolved_chunking_strategy = chunking_strategy or Config.LONG_TEXT_CHUNKING_STRATEGY
+        resolved_silence_padding = (
+            silence_padding
+            if silence_padding is not None and silence_padding >= 0
+            else Config.LONG_TEXT_SILENCE_PADDING_MS
+        )
+        resolved_quality_preset = quality_preset or Config.LONG_TEXT_QUALITY_PRESET
+
         # Estimate number of chunks
-        estimated_chunks = max(1, (len(text) + Config.LONG_TEXT_CHUNK_SIZE - 1) // Config.LONG_TEXT_CHUNK_SIZE)
+        estimated_chunks = max(1, (len(text) + resolved_chunk_size - 1) // resolved_chunk_size)
 
         # Create job directories
         self._create_job_directories(job_id)
@@ -203,7 +222,11 @@ class LongTextJobManager:
                 'exaggeration': exaggeration,
                 'cfg_weight': cfg_weight,
                 'temperature': temperature,
-                'output_format': output_format
+                'output_format': output_format,
+                'chunking_strategy': resolved_chunking_strategy,
+                'chunk_size': resolved_chunk_size,
+                'quality_preset': resolved_quality_preset,
+                'silence_padding_ms': resolved_silence_padding,
             },
             output_format=output_format,
             user_session_id=session_id
