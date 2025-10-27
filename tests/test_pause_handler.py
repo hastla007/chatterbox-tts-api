@@ -23,6 +23,15 @@ class TestPauseHandler:
         assert chunks[0].pause_after_ms == 400
         assert chunks[1].text == "world"
 
+    def test_en_dash_pause(self):
+        handler = PauseHandler()
+        chunks = handler.process("Numbers 1–2")
+
+        assert len(chunks) == 2
+        assert chunks[0].text == "Numbers 1"
+        assert chunks[0].pause_after_ms == 350
+        assert chunks[1].text == "2"
+
     def test_multiple_pauses(self):
         handler = PauseHandler()
         text = "Hello... I was thinking—maybe tomorrow?"
@@ -43,6 +52,24 @@ class TestPauseHandler:
         assert len(chunks) == 1
         assert chunks[0].text == "Hello... world—test"
         assert chunks[0].pause_after_ms == 0
+
+    def test_line_break_pause(self):
+        handler = PauseHandler()
+        chunks = handler.process("Line one\nLine two")
+
+        assert len(chunks) == 2
+        assert chunks[0].text == "Line one"
+        assert chunks[0].pause_after_ms == 250
+        assert chunks[1].text == "Line two"
+
+    def test_paragraph_break_pause(self):
+        handler = PauseHandler()
+        chunks = handler.process("Paragraph one\n\nParagraph two")
+
+        assert len(chunks) == 2
+        assert chunks[0].text == "Paragraph one"
+        assert chunks[0].pause_after_ms == 500
+        assert chunks[1].text == "Paragraph two"
 
     def test_custom_pause_durations(self):
         custom = {r"\.\.\.": 1000}
