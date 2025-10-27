@@ -12,7 +12,7 @@ from typing import Optional, Dict, Any
 
 from app.config import Config
 from app.core.long_text_jobs import get_job_manager
-from app.core.text_processing import split_text_for_long_generation, estimate_processing_time
+from app.core.text_processing import split_text_for_long_generation
 from app.core.audio_processing import concatenate_audio_files, AudioConcatenationError
 from app.api.endpoints.speech import generate_speech_internal, resolve_voice_path_and_language
 from app.models.long_text import (
@@ -141,12 +141,26 @@ class LongTextProcessor:
                 await self._fail_job(job_id, "Input text not found")
                 return
 
+            parameters = metadata.parameters or {}
+            chunk_size = int(parameters.get('chunk_size', Config.LONG_TEXT_CHUNK_SIZE))
+            if chunk_size <= 0:
+                chunk_size = Config.LONG_TEXT_CHUNK_SIZE
+
+            chunking_strategy = parameters.get(
+                'chunking_strategy', Config.LONG_TEXT_CHUNKING_STRATEGY
+            )
+
+            pause_settings = parameters.get('pause_settings') or {}
+            pause_enable = pause_settings.get('enable')
+            pause_custom = pause_settings.get('custom')
+
             # Phase 1: Text chunking
             await self._update_job_status(job_id, LongTextJobStatus.CHUNKING, "Splitting text into chunks")
 
             chunks = split_text_for_long_generation(
                 input_text,
-                max_chunk_size=Config.LONG_TEXT_CHUNK_SIZE
+                max_chunk_size=chunk_size,
+                strategy=chunking_strategy
             )
 
             if not chunks:
@@ -191,7 +205,9 @@ class LongTextProcessor:
                         language_id=language_id,
                         exaggeration=metadata.parameters.get('exaggeration'),
                         cfg_weight=metadata.parameters.get('cfg_weight'),
-                        temperature=metadata.parameters.get('temperature')
+                        temperature=metadata.parameters.get('temperature'),
+                        enable_pauses=pause_enable,
+                        custom_pauses=pause_custom,
                     )
 
                     # Save chunk audio file
@@ -244,11 +260,17 @@ class LongTextProcessor:
                 output_filename = f"final.{metadata.output_format}"
                 output_path = self.job_manager._get_job_file_paths(job_id)['output_dir'] / output_filename
 
+                silence_padding_ms = parameters.get(
+                    'silence_padding_ms', Config.LONG_TEXT_SILENCE_PADDING_MS
+                )
+                if silence_padding_ms is None or silence_padding_ms < 0:
+                    silence_padding_ms = Config.LONG_TEXT_SILENCE_PADDING_MS
+
                 concatenation_metadata = concatenate_audio_files(
                     audio_files=successful_chunks,
                     output_path=output_path,
                     output_format=metadata.output_format,
-                    silence_duration_ms=Config.LONG_TEXT_SILENCE_PADDING_MS,
+                    silence_duration_ms=silence_padding_ms,
                     # normalize_volume=True,
                     normalize_volume=False,
                     remove_source_files=False  # Keep source chunks for debugging

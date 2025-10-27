@@ -45,6 +45,36 @@ class Config:
     LONG_TEXT_SILENCE_PADDING_MS = int(os.getenv('LONG_TEXT_SILENCE_PADDING_MS', 200))
     LONG_TEXT_JOB_RETENTION_DAYS = int(os.getenv('LONG_TEXT_JOB_RETENTION_DAYS', 7))
     LONG_TEXT_MAX_CONCURRENT_JOBS = int(os.getenv('LONG_TEXT_MAX_CONCURRENT_JOBS', 3))
+    LONG_TEXT_CHUNKING_STRATEGY = os.getenv('LONG_TEXT_CHUNKING_STRATEGY', 'sentence')
+    LONG_TEXT_QUALITY_PRESET = os.getenv('LONG_TEXT_QUALITY_PRESET', 'balanced')
+
+    QUALITY_PRESETS = {
+        "fast": {
+            "chunk_size": int(os.getenv('QUALITY_FAST_CHUNK_SIZE', '1500')),
+            "cfg_weight": float(os.getenv('QUALITY_FAST_CFG_WEIGHT', '0.3')),
+            "temperature": float(os.getenv('QUALITY_FAST_TEMPERATURE', '0.6')),
+        },
+        "balanced": {
+            "chunk_size": int(os.getenv('QUALITY_BALANCED_CHUNK_SIZE', '2500')),
+            "cfg_weight": float(os.getenv('QUALITY_BALANCED_CFG_WEIGHT', '0.5')),
+            "temperature": float(os.getenv('QUALITY_BALANCED_TEMPERATURE', '0.8')),
+        },
+        "high": {
+            "chunk_size": int(os.getenv('QUALITY_HIGH_CHUNK_SIZE', '2800')),
+            "cfg_weight": float(os.getenv('QUALITY_HIGH_CFG_WEIGHT', '0.7')),
+            "temperature": float(os.getenv('QUALITY_HIGH_TEMPERATURE', '1.0')),
+        },
+    }
+
+    # Pause handling configuration
+    ENABLE_PUNCTUATION_PAUSES = os.getenv('ENABLE_PUNCTUATION_PAUSES', 'true').lower() == 'true'
+    ELLIPSIS_PAUSE_MS = int(os.getenv('ELLIPSIS_PAUSE_MS', 600))
+    EM_DASH_PAUSE_MS = int(os.getenv('EM_DASH_PAUSE_MS', 400))
+    EN_DASH_PAUSE_MS = int(os.getenv('EN_DASH_PAUSE_MS', 350))
+    PARAGRAPH_PAUSE_MS = int(os.getenv('PARAGRAPH_PAUSE_MS', 500))
+    LINE_BREAK_PAUSE_MS = int(os.getenv('LINE_BREAK_PAUSE_MS', 250))
+    MIN_PAUSE_MS = int(os.getenv('MIN_PAUSE_MS', 100))
+    MAX_PAUSE_MS = int(os.getenv('MAX_PAUSE_MS', 2000))
 
     # Multilingual model settings
     USE_MULTILINGUAL_MODEL = os.getenv('USE_MULTILINGUAL_MODEL', 'true').lower() == 'true'
@@ -95,6 +125,12 @@ class Config:
             raise ValueError(f"LONG_TEXT_JOB_RETENTION_DAYS must be positive, got {cls.LONG_TEXT_JOB_RETENTION_DAYS}")
         if cls.LONG_TEXT_MAX_CONCURRENT_JOBS <= 0:
             raise ValueError(f"LONG_TEXT_MAX_CONCURRENT_JOBS must be positive, got {cls.LONG_TEXT_MAX_CONCURRENT_JOBS}")
+        if cls.MIN_PAUSE_MS < 0:
+            raise ValueError(f"MIN_PAUSE_MS must be non-negative, got {cls.MIN_PAUSE_MS}")
+        if cls.MAX_PAUSE_MS < cls.MIN_PAUSE_MS:
+            raise ValueError(
+                f"MAX_PAUSE_MS ({cls.MAX_PAUSE_MS}) must be greater than or equal to MIN_PAUSE_MS ({cls.MIN_PAUSE_MS})"
+            )
 
     @staticmethod
     def _get_int_env(name: str, fallback: int) -> int:

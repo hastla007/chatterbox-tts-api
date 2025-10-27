@@ -30,6 +30,7 @@ from app.models.long_text import (
 from app.config import Config
 from app.core.long_text_jobs import get_job_manager
 from app.core.background_tasks import get_processor
+from app.core.quality_presets import get_quality_preset
 from app.core.text_processing import validate_long_text_input, estimate_processing_time
 from app.core import add_route_aliases
 
@@ -60,6 +61,17 @@ async def create_long_text_job(request: LongTextRequest):
                 }
             )
 
+        # Resolve quality and chunking configuration
+        preset_name = request.get_quality_preset()
+        preset_config = get_quality_preset(preset_name)
+
+        cfg_weight = request.cfg_weight if request.cfg_weight is not None else preset_config["cfg_weight"]
+        temperature = request.temperature if request.temperature is not None else preset_config["temperature"]
+        chunk_size = request.get_chunk_size(preset_config)
+        silence_padding = request.get_silence_padding()
+        chunking_strategy = request.get_chunking_strategy()
+        pause_settings = request.resolve_pause_settings()
+
         # Get job manager and processor
         job_manager = get_job_manager()
         processor = get_processor()
@@ -70,16 +82,22 @@ async def create_long_text_job(request: LongTextRequest):
             voice=request.voice,
             output_format=request.response_format or "mp3",
             exaggeration=request.exaggeration,
-            cfg_weight=request.cfg_weight,
-            temperature=request.temperature,
-            session_id=request.session_id
+            cfg_weight=cfg_weight,
+            temperature=temperature,
+            session_id=request.session_id,
+            chunking_strategy=chunking_strategy,
+            chunk_size=chunk_size,
+            silence_padding=silence_padding,
+            quality_preset=preset_name,
+            enable_pauses=pause_settings["enable"],
+            custom_pauses=pause_settings["custom"],
         )
 
         # Submit for background processing
         await processor.submit_job(job_id)
 
         # Estimate processing time
-        estimated_time = estimate_processing_time(len(request.input))
+        estimated_time = estimate_processing_time(len(request.input), chunk_size=chunk_size)
 
         return LongTextJobCreateResponse(
             job_id=job_id,
