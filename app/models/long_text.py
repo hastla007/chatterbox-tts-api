@@ -4,7 +4,7 @@ Pydantic models for long text TTS operations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal
 from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 
@@ -39,6 +39,22 @@ class LongTextRequest(BaseModel):
     cfg_weight: Optional[float] = Field(None, ge=0.0, le=1.0, description="Pace control")
     temperature: Optional[float] = Field(None, ge=0.05, le=5.0, description="Sampling temperature")
     session_id: Optional[str] = Field(None, description="Frontend session ID for tracking")
+    chunking_strategy: Optional[Literal["sentence", "paragraph", "word", "fixed"]] = Field(
+        None, description="Strategy to use when chunking the text"
+    )
+    quality_preset: Optional[Literal["fast", "balanced", "high"]] = Field(
+        None, description="Quality preset balancing speed vs fidelity"
+    )
+    chunk_size: Optional[int] = Field(
+        None,
+        gt=0,
+        description="Custom chunk size override (takes precedence over presets and defaults)",
+    )
+    silence_padding_ms: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Silence padding between chunks in milliseconds",
+    )
 
     @field_validator('input')
     @classmethod
@@ -59,6 +75,30 @@ class LongTextRequest(BaseModel):
             )
 
         return cleaned
+
+    def get_chunking_strategy(self) -> str:
+        """Return the requested chunking strategy with configuration fallback."""
+
+        return self.chunking_strategy or Config.LONG_TEXT_CHUNKING_STRATEGY
+
+    def get_quality_preset(self) -> str:
+        """Return the requested quality preset with configuration fallback."""
+
+        return self.quality_preset or Config.LONG_TEXT_QUALITY_PRESET
+
+    def get_chunk_size(self, preset_config: Dict[str, Any]) -> int:
+        """Resolve the chunk size using custom value, preset, then config."""
+
+        if self.chunk_size:
+            return self.chunk_size
+        return int(preset_config.get("chunk_size", Config.LONG_TEXT_CHUNK_SIZE))
+
+    def get_silence_padding(self) -> int:
+        """Resolve the silence padding with fallback to configuration."""
+
+        if self.silence_padding_ms is not None:
+            return self.silence_padding_ms
+        return Config.LONG_TEXT_SILENCE_PADDING_MS
 
 
 class LongTextChunk(BaseModel):
