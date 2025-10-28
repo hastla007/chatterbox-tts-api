@@ -240,6 +240,7 @@ async def generate_speech_internal(
                 "...": Config.ELLIPSIS_PAUSE_MS,
                 "—": Config.EM_DASH_PAUSE_MS,
                 "–": Config.EN_DASH_PAUSE_MS,
+                r"\.": Config.PERIOD_PAUSE_MS,
                 "\n\n": Config.PARAGRAPH_PAUSE_MS,
                 "\n": Config.LINE_BREAK_PAUSE_MS,
             }

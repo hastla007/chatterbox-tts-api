@@ -69,12 +69,13 @@ class Config:
 
     # Pause handling configuration
     ENABLE_PUNCTUATION_PAUSES = os.getenv('ENABLE_PUNCTUATION_PAUSES', 'true').lower() == 'true'
-    ELLIPSIS_PAUSE_MS = int(os.getenv('ELLIPSIS_PAUSE_MS', 600))
-    EM_DASH_PAUSE_MS = int(os.getenv('EM_DASH_PAUSE_MS', 400))
-    EN_DASH_PAUSE_MS = int(os.getenv('EN_DASH_PAUSE_MS', 350))
-    PARAGRAPH_PAUSE_MS = int(os.getenv('PARAGRAPH_PAUSE_MS', 500))
-    LINE_BREAK_PAUSE_MS = int(os.getenv('LINE_BREAK_PAUSE_MS', 250))
-    MIN_PAUSE_MS = int(os.getenv('MIN_PAUSE_MS', 100))
+    ELLIPSIS_PAUSE_MS = int(os.getenv('ELLIPSIS_PAUSE_MS', 800))
+    EM_DASH_PAUSE_MS = int(os.getenv('EM_DASH_PAUSE_MS', 550))
+    EN_DASH_PAUSE_MS = int(os.getenv('EN_DASH_PAUSE_MS', 375))
+    PERIOD_PAUSE_MS = int(os.getenv('PERIOD_PAUSE_MS', 500))
+    PARAGRAPH_PAUSE_MS = int(os.getenv('PARAGRAPH_PAUSE_MS', 800))
+    LINE_BREAK_PAUSE_MS = int(os.getenv('LINE_BREAK_PAUSE_MS', 350))
+    MIN_PAUSE_MS = int(os.getenv('MIN_PAUSE_MS', 200))
     MAX_PAUSE_MS = int(os.getenv('MAX_PAUSE_MS', 2000))
 
     # Multilingual model settings
