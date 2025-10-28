@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from app.config import Config
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,19 +25,20 @@ class PauseHandler:
     """Split text around punctuation and expose pause metadata."""
 
     DEFAULT_PAUSES: Dict[str, int] = {
-        r"\.\.\.": 600,
-        r"—": 400,
-        r"–": 350,
-        r"\n\n": 500,
-        r"\n": 250,
+        r"\.\.\.": Config.ELLIPSIS_PAUSE_MS,
+        r"—": Config.EM_DASH_PAUSE_MS,
+        r"–": Config.EN_DASH_PAUSE_MS,
+        r"\.": Config.PERIOD_PAUSE_MS,
+        r"\n\n": Config.PARAGRAPH_PAUSE_MS,
+        r"\n": Config.LINE_BREAK_PAUSE_MS,
     }
 
     def __init__(
         self,
         enable_pauses: bool = True,
         custom_pauses: Optional[Dict[str, int]] = None,
-        min_pause_ms: int = 100,
-        max_pause_ms: int = 2000,
+        min_pause_ms: int = Config.MIN_PAUSE_MS,
+        max_pause_ms: int = Config.MAX_PAUSE_MS,
     ) -> None:
         self.enable_pauses = enable_pauses
         self.min_pause_ms = min_pause_ms
@@ -143,14 +146,26 @@ def split_text_with_pauses(
     text: str,
     enable_pauses: bool = True,
     custom_pauses: Optional[Dict[str, int]] = None,
-    min_pause_ms: int = 100,
-    max_pause_ms: int = 2000,
+    min_pause_ms: int = Config.MIN_PAUSE_MS,
+    max_pause_ms: int = Config.MAX_PAUSE_MS,
 ) -> List[TextChunk]:
     """Convenience wrapper around :class:`PauseHandler`."""
 
+    pause_mapping: Dict[str, int] = {
+        r"\.\.\.": Config.ELLIPSIS_PAUSE_MS,
+        r"—": Config.EM_DASH_PAUSE_MS,
+        r"–": Config.EN_DASH_PAUSE_MS,
+        r"\.": Config.PERIOD_PAUSE_MS,
+        r"\n\n": Config.PARAGRAPH_PAUSE_MS,
+        r"\n": Config.LINE_BREAK_PAUSE_MS,
+    }
+
+    if custom_pauses:
+        pause_mapping.update(custom_pauses)
+
     handler = PauseHandler(
         enable_pauses=enable_pauses,
-        custom_pauses=custom_pauses,
+        custom_pauses=pause_mapping,
         min_pause_ms=min_pause_ms,
         max_pause_ms=max_pause_ms,
     )
