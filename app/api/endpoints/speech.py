@@ -236,18 +236,19 @@ async def generate_speech_internal(
         update_tts_status(request_id, TTSStatus.CHUNKING, "Preparing text segments")
 
         if resolved_enable_pauses:
-            config_pauses = {
-                r"\.\.\.": Config.ELLIPSIS_PAUSE_MS,
-                r"—": Config.EM_DASH_PAUSE_MS,
-                r"–": Config.EN_DASH_PAUSE_MS,
-                r"\n\n": Config.PARAGRAPH_PAUSE_MS,
-                r"\n": Config.LINE_BREAK_PAUSE_MS,
+            pause_defaults = {
+                "...": Config.ELLIPSIS_PAUSE_MS,
+                "—": Config.EM_DASH_PAUSE_MS,
+                "–": Config.EN_DASH_PAUSE_MS,
+                r"\.": Config.PERIOD_PAUSE_MS,
+                "\n\n": Config.PARAGRAPH_PAUSE_MS,
+                "\n": Config.LINE_BREAK_PAUSE_MS,
             }
-            config_pauses.update(pause_overrides)
+            pause_defaults.update(pause_overrides)
 
             pause_handler = PauseHandler(
                 enable_pauses=True,
-                custom_pauses=config_pauses,
+                custom_pauses=pause_defaults,
                 min_pause_ms=Config.MIN_PAUSE_MS,
                 max_pause_ms=Config.MAX_PAUSE_MS,
             )
