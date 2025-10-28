@@ -72,6 +72,7 @@ class Config:
     ELLIPSIS_PAUSE_MS = int(os.getenv('ELLIPSIS_PAUSE_MS', 600))
     EM_DASH_PAUSE_MS = int(os.getenv('EM_DASH_PAUSE_MS', 400))
     EN_DASH_PAUSE_MS = int(os.getenv('EN_DASH_PAUSE_MS', 350))
+    PERIOD_PAUSE_MS = int(os.getenv('PERIOD_PAUSE_MS', 300))
     PARAGRAPH_PAUSE_MS = int(os.getenv('PARAGRAPH_PAUSE_MS', 500))
     LINE_BREAK_PAUSE_MS = int(os.getenv('LINE_BREAK_PAUSE_MS', 250))
     MIN_PAUSE_MS = int(os.getenv('MIN_PAUSE_MS', 100))
